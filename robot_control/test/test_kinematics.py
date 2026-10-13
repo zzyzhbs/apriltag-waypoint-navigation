@@ -4,7 +4,8 @@ import pytest
 
 from robot_control.kinematics import (
     CMD_MAX, FloorProfile, forward, from_command, integrate_pose, inverse,
-    load_profile, load_trials, quat_to_yaw, save_profile, to_command, wrap_angle,
+    load_profile, load_trials, quat_to_yaw, rotate_coast, rotate_command, save_profile,
+    to_command, wrap_angle,
 )
 
 NOM = FloorProfile(floor='nominal')
@@ -86,3 +87,18 @@ def test_profile_roundtrip(tmp_path):
     assert load_profile(d, 'wood') == p
     assert len(load_trials(d, 'wood')) == 2
     assert load_trials(d, 'wood', 'straight')[0]['measured_m'] == 1.14
+
+
+def test_rotate_command_and_coast():
+    p = FloorProfile(floor='t', rot_cmd=0.35, rot_coast_ccw=0.1, rot_coast_cw=0.2)
+    assert rotate_command(+1, p) == (-0.35, 0.35)
+    assert rotate_command(-1, p) == (0.35, -0.35)
+    assert from_command(*rotate_command(+1, p), p)[0] == pytest.approx(0.0)
+    assert rotate_coast(+1, p) == 0.1 and rotate_coast(-1, p) == 0.2
+
+
+def test_load_v1_profile_ignores_removed_fields(tmp_path):
+    (tmp_path / 'wood.yaml').write_text(
+        'floor: wood\nparams: {linear_scale: 0.9, yaw_sign: 1, yaw_drift: 0.0}\n')
+    p = load_profile(str(tmp_path), 'wood')
+    assert p.linear_scale == 0.9 and p.gyro_scale == 1.0

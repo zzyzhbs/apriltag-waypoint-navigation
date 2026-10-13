@@ -21,12 +21,20 @@ DEFAULT_PROFILE_DIR = '~/ros2_ws/src/CSE276A/robot_control/config/floors'
 @dataclass
 class FloorProfile:
     floor: str
+    # driving (straight / small corrections)
     linear_scale: float = 1.0      # actual ground speed / commanded speed
-    track_eff: float = TRACK_NOMINAL  # effective track width (skid steering), m
     trim: float = 0.0              # L *= (1 - trim), R *= (1 + trim)
-    min_cmd: float = 0.0           # smallest wheel command that actually moves
-    yaw_sign: int = 1              # +1: IMU yaw increases counterclockwise
-    yaw_drift: float = 0.0         # static yaw drift, rad/s (logged only)
+    track_eff: float = TRACK_NOMINAL  # effective track width while driving, m
+    min_cmd: float = 0.0           # rolling deadband
+    # in-place rotation primitive
+    rot_cmd: float = 0.3           # wheel command magnitude for spinning
+    rot_rate_ccw: float = 0.0      # steady rate at rot_cmd, rad/s (0 = unknown)
+    rot_rate_cw: float = 0.0
+    rot_coast_ccw: float = 0.0     # extra rotation after the stop command, rad
+    rot_coast_cw: float = 0.0
+    rot_deadband: float = 0.0      # spin start command (logged only)
+    # IMU
+    gyro_scale: float = 1.0        # deg/s per gz unit (sign included)
 
 
 PARAM_NAMES = [f.name for f in fields(FloorProfile) if f.name != 'floor']
@@ -76,6 +84,17 @@ def from_command(L: float, R: float, p: FloorProfile) -> tuple[float, float]:
     """Actually-sent command [L, R] -> estimated body (v, w)."""
     L, R = L / (1.0 - p.trim), R / (1.0 + p.trim)
     return forward(L * p.linear_scale, R * p.linear_scale, p)
+
+
+def rotate_command(direction: int, p: FloorProfile) -> tuple[float, float]:
+    """In-place spin at rot_cmd; direction +1 = CCW, -1 = CW."""
+    c = p.rot_cmd if direction > 0 else -p.rot_cmd
+    return -c, c
+
+
+def rotate_coast(direction: int, p: FloorProfile) -> float:
+    """Angle (rad, >= 0) the robot keeps turning after the stop command."""
+    return p.rot_coast_ccw if direction > 0 else p.rot_coast_cw
 
 
 def integrate_pose(x: float, y: float, th: float,
