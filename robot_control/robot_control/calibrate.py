@@ -2,8 +2,11 @@
 
 ros2 run robot_control calibrate --ros-args -p floor:=wood -p test:=straight
 tests: drift, yaw_check, straight, rotate, deadband, all
+diagnostics (not in all): imu_diag  (hand rotation, motors idle)
 """
+import csv
 import math
+import os
 import statistics
 import threading
 import time
@@ -24,10 +27,11 @@ SETTLE_S = 1.0  # skip spin-up transient when measuring steady rotation rate
 # test: (default cmd, default duration s)
 DEFAULTS = {
     'drift': (0.0, 30.0),
-    'yaw_check': (0.1, 25.0),   # duration = timeout
+    'yaw_check': (0.3, 15.0),   # duration = timeout
     'straight': (0.3, 4.0),
-    'rotate': (0.2, 4.0),
-    'deadband': (0.01, 1.0),    # start cmd / seconds per step
+    'rotate': (0.3, 4.0),       # rotation deadband on wood is ~0.2
+    'deadband': (0.15, 1.0),    # start cmd / seconds per step
+    'imu_diag': (0.0, 10.0),    # static bias window
 }
 ALL_ORDER = ['drift', 'yaw_check', 'straight', 'rotate', 'deadband']
 
@@ -48,11 +52,15 @@ class CalibrationNode(Node):
         self.pub = self.create_publisher(Float32MultiArray, 'motor_commands', 10)
         self.create_subscription(Imu, 'imu_data', self.imu_cb, 10)
 
-        # continuous (unwrapped) raw IMU yaw, rad
+        # continuous (unwrapped) raw IMU yaw, rad; raw integral of angular_velocity.z
         self.lock = threading.Lock()
         self.last_raw = None
+        self.last_t = None
+        self.last_gz = 0.0
         self.yaw = 0.0
+        self.gz_int = 0.0
         self.imu_count = 0
+        self.log = None  # [(t, yaw, gz_int, gz)] while recording
 
         self.profile = load_profile(self.profile_dir, self.floor, allow_missing=True)
 
@@ -61,11 +69,19 @@ class CalibrationNode(Node):
     def imu_cb(self, msg):
         q = msg.orientation
         raw = quat_to_yaw(q.w, q.x, q.y, q.z)
+        gz = msg.angular_velocity.z
+        st = msg.header.stamp
+        t = st.sec + st.nanosec * 1e-9 or time.monotonic()
         with self.lock:
             if self.last_raw is not None:
                 self.yaw += wrap_angle(raw - self.last_raw)
-            self.last_raw = raw
+                dt = t - self.last_t
+                if 0.0 < dt < 0.5:
+                    self.gz_int += 0.5 * (gz + self.last_gz) * dt  # trapezoid
+            self.last_raw, self.last_t, self.last_gz = raw, t, gz
             self.imu_count += 1
+            if self.log is not None:
+                self.log.append((t, self.yaw, self.gz_int, gz))
 
     def get_yaw(self):
         with self.lock:
@@ -220,7 +236,7 @@ class CalibrationNode(Node):
         self.save({'test': 'rotate', 'cmd': cmd, 'duration': dur,
                    'w_ccw': ws[0], 'w_cw': ws[1], 'track_eff': track}, updates)
 
-    def run_deadband(self, threshold=math.radians(3.0), max_cmd=0.15):
+    def run_deadband(self, threshold=math.radians(3.0), max_cmd=0.35):
         start, step_s = self.params_for('deadband')
         prompt(f'Robot will spin in place with command rising from {start} '
                f'by 0.01 every {step_s:.1f} s until it rotates.')
@@ -239,14 +255,127 @@ class CalibrationNode(Node):
             return
         self.save({'test': 'deadband', 'min_cmd': found}, {'min_cmd': found})
 
+    # ---------- IMU diagnostic (hand rotation) ----------
+
+    DIAG_SEGMENTS = [
+        ('CCW 90 deg', 90.0),
+        ('CCW another 90 deg (total 180)', 90.0),
+        ('CCW another 180 deg (total 360)', 180.0),
+        ('CW 360 deg back to start', -360.0),
+        ('FAST CCW 90 deg (~0.5 s)', 90.0),
+        ('FAST CW 90 deg back to start (~0.5 s)', -90.0),
+    ]
+
+    def snap(self):
+        with self.lock:
+            return len(self.log)
+
+    def run_imu_diag(self):
+        _, bias_s = self.params_for('imu_diag')
+        print('  Motors stay idle. You rotate the robot BY HAND on the floor (do not lift it).')
+        print('  For each step: rotate, align to the mark, keep still ~3 s, then press Enter.')
+        with self.lock:
+            self.log = []
+
+        prompt(f'Keep the robot still for {bias_s:.0f} s to measure gyro bias.')
+        i0 = self.snap()
+        time.sleep(bias_s)
+        static = self.log[i0:self.snap()]
+        gzs = [r[3] for r in static]
+        bias = statistics.mean(gzs) if gzs else 0.0
+        noise = statistics.pstdev(gzs) if len(gzs) > 1 else 0.0
+        yaw_drift = math.degrees(static[-1][1] - static[0][1]) if static else 0.0
+        print(f'  {len(gzs)} samples, gz bias={bias:.5g}, gz noise std={noise:.5g}, '
+              f'board yaw drift={yaw_drift:.2f} deg')
+
+        input('  Align the robot to the 0 deg mark, keep still, press Enter...')
+        rows = []
+        for label, true_deg in self.DIAG_SEGMENTS:
+            a = self.snap()
+            input(f'  -> Rotate {label}; align, wait ~3 s, press Enter...')
+            b = self.snap()
+            rows.append(self.diag_segment(label, true_deg, self.log[a:b], bias))
+        with self.lock:
+            log, self.log = self.log, None
+
+        self.diag_report(rows, bias, noise, log)
+        csv_path = self.diag_dump(log)
+        print(f'  Raw samples: {csv_path}')
+        self.save({'test': 'imu_diag', 'gz_bias': bias, 'gz_noise': noise,
+                   'segments': rows, 'csv': os.path.basename(csv_path)}, {})
+
+    @staticmethod
+    def diag_segment(label, true_deg, seg, bias):
+        row = {'label': label, 'true_deg': true_deg}
+        if len(seg) < 2:
+            return row
+        dt = seg[-1][0] - seg[0][0]
+        board = math.degrees(seg[-1][1] - seg[0][1])
+        gz_d = (seg[-1][2] - seg[0][2]) - bias * dt
+        row.update(board_deg=round(board, 2), board_ratio=round(board / true_deg, 4),
+                   gz_int=gz_d, gz_scale=(true_deg / gz_d) if abs(gz_d) > 1e-9 else None)
+
+        # board-yaw lag: rotation end (from gyro) -> board yaw settled at its final value
+        g = [abs(r[3] - bias) for r in seg]
+        peak = max(g)
+        row['gz_peak'] = peak
+        if peak > 0:
+            t_end = max(r[0] for r, x in zip(seg, g) if x > 0.1 * peak)
+            final = seg[-1][1]
+            tol = max(math.radians(2.0), 0.05 * abs(final - seg[0][1]))
+            unsettled = [r[0] for r in seg if abs(r[1] - final) >= tol]
+            t_settle = unsettled[-1] if unsettled else seg[0][0]
+            row['lag_s'] = round(t_settle - t_end, 2)
+        return row
+
+    @staticmethod
+    def diag_report(rows, bias, noise, log):
+        print('\n  segment                                  true   board  ratio    gz_int'
+              '     gz_scale  lag_s')
+        for r in rows:
+            scale = r.get('gz_scale')
+            scale = float('nan') if scale is None else scale
+            print(f"  {r['label']:<40} {r['true_deg']:>6.0f} {r.get('board_deg', 0):>7.1f} "
+                  f"{r.get('board_ratio', 0):>6.3f} {r.get('gz_int', 0):>10.4g} "
+                  f"{scale:>10.4g} {r.get('lag_s', '-')!s:>6}")
+
+        print('\n  Verdict:')
+        if all(r.get('gz_peak', 0) == 0 for r in rows):
+            print('  - gz is always 0: firmware does not send gyro in T:1002 -> gz NOT available.')
+        else:
+            for name, rs in (('slow', rows[:4]), ('all', rows)):
+                sc = [r['gz_scale'] for r in rs if r.get('gz_scale')]
+                if len(sc) >= 2:
+                    m, sd = statistics.mean(sc), statistics.pstdev(sc)
+                    print(f'  - gz_scale ({name}): mean {m:.5g} deg per (gz unit * s), '
+                          f'spread {100 * sd / abs(m):.1f}%  '
+                          f'({"consistent -> usable" if sd / abs(m) < 0.02 else "INCONSISTENT"})')
+            print('    (if gz is deg/s scale ~1; rad/s ~57.3; raw counts ~0.06 or ~0.008)')
+        br = [r['board_ratio'] for r in rows if 'board_ratio' in r]
+        if br:
+            m, sd = statistics.mean(br), statistics.pstdev(br)
+            print(f'  - board yaw ratio: mean {m:.3f}, spread {100 * sd / max(abs(m), 1e-9):.1f}% '
+                  f'({"usable after scaling" if sd / max(abs(m), 1e-9) < 0.02 else "NOT usable"})')
+
+    def diag_dump(self, log):
+        d = os.path.join(os.path.dirname(os.path.expanduser(self.profile_dir)), 'diag')
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, f'imu_diag_{datetime.now():%Y%m%d_%H%M%S}.csv')
+        with open(path, 'w', newline='') as f:
+            w = csv.writer(f)
+            w.writerow(['t', 'board_yaw_rad', 'gz_int_raw', 'gz_raw'])
+            w.writerows(log)
+        return path
+
     def run(self):
         self.wait_for_imu()
         print(f'\nFloor: {self.floor}   profile dir: {self.profile_dir}')
         print(f'Current profile: {self.profile}')
         tests = ALL_ORDER if self.test == 'all' else [self.test]
+        diag = [t for t in DEFAULTS if t not in ALL_ORDER]
         for test in tests:
             if test not in DEFAULTS:
-                raise Abort(f'Unknown test "{test}". Choose from {ALL_ORDER} or all.')
+                raise Abort(f'Unknown test "{test}". Choose from {ALL_ORDER + diag} or all.')
             print(f'\n===== {test} =====')
             getattr(self, f'run_{test}')()
 
