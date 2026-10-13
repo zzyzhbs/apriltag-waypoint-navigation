@@ -24,3 +24,13 @@ After the robot stops, measure the same point on the robot:
 
 Don't touch the robot during the 3-4 s still period before each run.
 Answer Y to save. Output: `robot_control/config/floors/<floor>.yaml`, `config/diag/imu_diag_<floor>_<time>.csv`.
+
+# Run HW1 (waypoints)
+
+```bash
+ros2 launch robot_control hw1_launch.py floor:=carpet
+# or, with motor_control already running:
+ros2 run robot_control velocity_control --ros-args -p floor:=carpet   # e.g. -p drive_heading:=gyro -p v_max:=0.2
+```
+
+Place the robot at (0,0) facing +x; keep still 10 s. Log: `HW1/logs/run_<floor>_<time>.csv`.
