@@ -1,0 +1,12 @@
+floor: wood
+updated: '2026-10-14'
+drive:
+  trim: 0.0
+  trials:
+  - {cmd: 0.3, T: 4.0, trim: 0.0, x: 1.5, y: 0.0, time: '2026-10-14T00:00:00'}
+spin:
+  ccw:
+    trials: []
+  cw:
+    trials: []
+verify: []

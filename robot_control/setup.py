@@ -13,7 +13,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.py')),
-        ('share/' + package_name + '/config/floors', glob('config/floors/*.yaml')),
+        ('share/' + package_name + '/config/open_loop', glob('config/open_loop/*.yaml')),
     ],
     install_requires=[
         'setuptools',
@@ -33,7 +33,7 @@ setup(
             'motor_control = robot_control.motor_control:main',
             'keyboard_control = robot_control.keyboard_control:main',
             'velocity_control = robot_control.velocity_control:main',
-            'calibrate = robot_control.calibrate:main',
+            'ol_calibrate = robot_control.ol_calibrate:main',
         ],
     },
 )

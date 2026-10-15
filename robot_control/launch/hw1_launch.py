@@ -6,7 +6,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    floor = DeclareLaunchArgument('floor', description='floor profile, e.g. carpet')
+    floor = DeclareLaunchArgument('floor', description='calibration file, e.g. wood')
     motor_node = Node(
         package='robot_control',
         executable='motor_control',

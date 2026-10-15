@@ -1,147 +1,86 @@
-"""HW1 waypoint follower node. motor_control must be running.
+"""HW1 open-loop waypoint runner. motor_control must be running.
 
-ros2 run robot_control velocity_control --ros-args -p floor:=carpet
-Any NavParams field can be overridden, e.g. -p v_max:=0.2 -p drive_heading:=gyro
+ros2 run robot_control velocity_control --ros-args -p floor:=wood [-p dry_run:=true]
 """
 import csv
 import math
 import os
-from dataclasses import fields
+import time
 from datetime import datetime
 
-import rclpy
-from rclpy.executors import ExternalShutdownException
-from rclpy.node import Node
-from sensor_msgs.msg import Imu
-from std_msgs.msg import Float32MultiArray
+from robot_control import ol_node
+from robot_control.ol_model import DEFAULT_CALIB_DIR, Calibration, ModelError
+from robot_control.ol_planner import format_plan, load_waypoints, plan, ready
 
-from robot_control.heading import GyroHeading
-from robot_control.kinematics import DEFAULT_PROFILE_DIR, load_profile, wrap_angle
-from robot_control.navigator import STOP, NavParams, Navigator, load_waypoints
-
-RATE_HZ = 20.0
-IMU_TIMEOUT_S = 0.5
 DEFAULT_WAYPOINTS = '~/ros2_ws/src/CSE276A/HW1/waypoints.txt'
 DEFAULT_LOG_DIR = '~/ros2_ws/src/CSE276A/HW1/logs'
+COUNTDOWN_S = 3
 
 
-class VelocityControlNode(Node):
+class VelocityControlNode(ol_node.MotorNode):
     def __init__(self):
         super().__init__('velocity_control_node')
-        floor = self.declare_parameter('floor', '').value  # required, no default
-        wp_path = self.declare_parameter('waypoints', DEFAULT_WAYPOINTS).value
-        profile_dir = self.declare_parameter('profile_dir', DEFAULT_PROFILE_DIR).value
-        log_dir = self.declare_parameter('log_dir', DEFAULT_LOG_DIR).value
-        if not floor:
-            raise RuntimeError('Set the floor: -p floor:=<name> (e.g. carpet).')
+        self.floor = self.param('floor', '')
+        calib_dir = self.param('calib_dir', DEFAULT_CALIB_DIR)
+        wp_path = os.path.expanduser(self.param('waypoints', DEFAULT_WAYPOINTS))
+        self.log_dir = os.path.expanduser(self.param('log_dir', DEFAULT_LOG_DIR))
+        self.dry_run = bool(self.param('dry_run', False))
+        self.wp_pause_s = self.float_param('wp_pause_s', 1.0)
+        self.run_ = self.runner(self.float_param('settle_s', 1.0))
 
-        defaults = NavParams()
-        params = NavParams(**{
-            f.name: self.declare_parameter(f.name, getattr(defaults, f.name)).value
-            for f in fields(NavParams)})
-        self.profile = load_profile(profile_dir, floor)
-        wps = load_waypoints(os.path.expanduser(wp_path))
-        self.nav = Navigator(wps, self.profile, params)
-        self.heading = GyroHeading(self.profile.gyro_scale)
-        self.heading.reset(wps[0][2])
+        self.calib = Calibration.for_floor(calib_dir, self.floor)
+        self.legs = plan(load_waypoints(wp_path), self.calib,
+                         drive_cmd=self.float_param('drive_cmd', 0.3),
+                         spin_cmd=self.float_param('spin_cmd', 0.35),
+                         pos_tol=self.float_param('pos_tol', 0.02),
+                         min_turn_deg=self.float_param('min_turn_deg', 2.0))
+        print(f'calibration: {self.calib.path}\nwaypoints: {wp_path}')
+        print(format_plan(self.legs, self.calib.trim))
 
-        self.pub = self.create_publisher(Float32MultiArray, 'motor_commands', 10)
-        self.create_subscription(Imu, 'imu_data', self.imu_cb, 10)
-        self.timer = self.create_timer(1.0 / RATE_HZ, self.tick)
-        self.last_imu = None
-        self.n_events = 0
-        self.stop_ticks = 0
-
-        log_dir = os.path.expanduser(log_dir)
-        os.makedirs(log_dir, exist_ok=True)
-        self.log_path = os.path.join(log_dir, f'run_{floor}_{datetime.now():%Y%m%d_%H%M%S}.csv')
-        self.log_file = open(self.log_path, 'w', newline='')
-        self.log = csv.writer(self.log_file)
-        self.log.writerow(
-            ['t', 'phase', 'wp', 'x', 'y', 'theta_deg', 'gyro_deg', 'bias', 'L', 'R'])
-
-        self.get_logger().info(f'profile: {self.profile}')
-        self.get_logger().info(f'params: {params}')
-        self.get_logger().info(f'{len(wps)} waypoints from {wp_path}; log: {self.log_path}')
-        self.get_logger().info(f'Keep the robot still for {params.start_still_s:.0f} s...')
-
-    @staticmethod
-    def now_s(stamp):
-        return stamp.sec + stamp.nanosec * 1e-9
-
-    def imu_cb(self, msg):
-        t = self.now_s(msg.header.stamp)
-        self.heading.update(t, msg.angular_velocity.z, self.nav.stationary(t))
-        self.last_imu = t
-
-    def send(self, L, R):
-        msg = Float32MultiArray()
-        msg.data = [float(L), float(R)]
-        self.pub.publish(msg)
-
-    def tick(self):
-        t = self.get_clock().now().nanoseconds * 1e-9
-        if self.nav.done:
-            self.send(*STOP)
-            self.stop_ticks += 1
-            if self.stop_ticks >= 10:
-                self.timer.cancel()
-                self.summary()
-                raise SystemExit
+    def run(self):
+        if not ready(self.legs):
+            raise ModelError('plan has uncalibrated steps (see !! above)')
+        if self.dry_run:
             return
-        if self.last_imu is None or t - self.last_imu > IMU_TIMEOUT_S:
-            # hold still (motor_control watchdog would stop anyway); don't advance the plan
-            self.send(*STOP)
-            if self.last_imu is not None:
-                self.get_logger().warn('IMU timeout, holding', throttle_duration_sec=1.0)
-            return
-
-        L, R = self.nav.step(t, self.heading.theta)
-        self.send(L, R)
-        n = self.nav
-        self.log.writerow([f'{t:.3f}', n.phase, n.wp_index, f'{n.x:.4f}', f'{n.y:.4f}',
-                           f'{math.degrees(n.theta):.2f}',
-                           f'{math.degrees(self.heading.theta):.2f}',
-                           f'{self.heading.bias:.3f}', f'{L:.3f}', f'{R:.3f}'])
-        for e in n.events[self.n_events:]:
-            self.get_logger().info(e)
-        self.n_events = len(n.events)
-
-    def summary(self):
-        self.get_logger().info('Estimated pose at each waypoint '
-                               '(measure the real one for the report):')
-        for i, x, y, th in self.nav.arrivals:
-            gx, gy, gth = self.nav.wps[i]
-            self.get_logger().info(
-                f'  wp{i} goal ({gx}, {gy}, {math.degrees(gth):.0f} deg)  '
-                f'est ({x:.3f}, {y:.3f}, {math.degrees(wrap_angle(th)):.1f} deg)')
-        self.get_logger().info(f'log: {self.log_path}')
-
-    def close(self):
-        self.log_file.close()
+        os.makedirs(self.log_dir, exist_ok=True)
+        path = os.path.join(self.log_dir, f'run_{self.floor}_{datetime.now():%Y%m%d_%H%M%S}.csv')
+        for i in range(COUNTDOWN_S, 0, -1):
+            print(f'starting in {i}...')
+            time.sleep(1.0)
+        trim = self.calib.trim
+        with open(path, 'w', newline='') as f:
+            log = csv.writer(f)
+            log.writerow(['wp', 'kind', 'dir', 'amount', 'cmd', 'L', 'R', 'T',
+                          't_start', 't_stop'])
+            t_ref = time.monotonic()
+            for leg in self.legs:
+                for s in leg.steps:
+                    print(f'wp{leg.index}: {s.describe()}')
+                    (L, R), (t0, t1) = self.run_.run_step(
+                        s.kind, s.dir, s.cmd, s.T, trim if s.kind == 'drive' else 0.0)
+                    log.writerow([leg.index, s.kind, s.dir, f'{s.amount:.4f}', s.cmd,
+                                  f'{L:.4f}', f'{R:.4f}', f'{s.T:.3f}',
+                                  f'{t0 - t_ref:.3f}', f'{t1 - t_ref:.3f}'])
+                    f.flush()
+                gx, gy, gth = leg.goal
+                print(f'>>> Reached waypoint {leg.index} '
+                      f'({gx:g}, {gy:g}, {math.degrees(gth):.0f} deg)')
+                time.sleep(self.wp_pause_s)
+        print(f'done; log: {path}')
 
 
 def main(args=None):
-    rclpy.init(args=args)
+    ol_node.init(args)
     node = None
     try:
         node = VelocityControlNode()
-        rclpy.spin(node)
-    except (KeyboardInterrupt, ExternalShutdownException, SystemExit):
-        pass
-    except RuntimeError as e:
+        node.run()
+    except (ModelError, ValueError, OSError) as e:
         print(f'ERROR: {e}')
+    except KeyboardInterrupt:
+        print('\nAborted.')
     finally:
-        if node is not None:
-            # context may already be invalid after Ctrl-C; motor_control's watchdog stops anyway
-            try:
-                for _ in range(5):
-                    node.send(*STOP)
-            except Exception:
-                pass
-            node.close()
-            node.destroy_node()
-        rclpy.try_shutdown()
+        ol_node.shutdown(node)
     return 0
 
 
