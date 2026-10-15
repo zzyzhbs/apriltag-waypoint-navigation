@@ -62,8 +62,16 @@ Check command parsing first without moving:
 ssh -tt ubuntu@<robot-ip> 'python3 -B /home/ubuntu/ssh_timed_motion.py turn cw 1.5'
 ```
 
-With a clear floor and only `motor_controller_node` subscribing to
-`motor_commands`, run **one command at a time**:
+With a clear floor, start `ros2 run robot_control motor_control` in a separate
+SSH/tmux session after sourcing ROS. Do not use `robot_teleop_launch.py` here:
+it also starts `keyboard_control`, a competing `motor_commands` publisher.
+With only `motor_controller_node` subscribing, run **one command at a time**:
+
+```sh
+ssh -tt ubuntu@<robot-ip> "bash -lc 'source /opt/ros/jazzy/setup.bash; source /home/ubuntu/ros2_ws/install/setup.bash; ros2 run robot_control motor_control'"
+```
+
+Keep that controller terminal running, then use a second terminal for motion:
 
 ```sh
 ssh -tt ubuntu@<robot-ip> "bash -lc 'source /opt/ros/jazzy/setup.bash; source /home/ubuntu/ros2_ws/install/setup.bash; python3 -B /home/ubuntu/ssh_timed_motion.py turn cw 1.5 --live'"
