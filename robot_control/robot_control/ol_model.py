@@ -202,7 +202,19 @@ class Calibration:
         return invert(fit_at(self.drive_fits(), cmd), dist)
 
     def spin_time(self, d, deg, cmd):
-        return invert(fit_at(self.spin_fits(d), cmd), deg)
+        fit = fit_at(self.spin_fits(d), cmd)
+        T, warn = invert(fit, deg)
+        # Optional direction-specific correction to command duration. Keep raw
+        # trial angles intact so the measured fit remains auditable.
+        scale = float(self.data['spin'][d].get('time_scale', 1.0))
+        if not math.isfinite(scale) or scale <= 0:
+            raise ModelError(f'spin {d} time_scale must be positive and finite')
+        T *= scale
+        if T < MIN_T:
+            raise ModelError(f'adjusted T = {T:.2f} s < {MIN_T} s for target {deg:g}')
+        if T < fit.t_min * (1 - EXTRAP) or T > fit.t_max * (1 + EXTRAP):
+            warn = f'adjusted T = {T:.2f} s outside calibrated {fit.t_min:g}-{fit.t_max:g} s'
+        return T, warn
 
     def trim_points(self, cmd=None):
         return [(float(t.get('trim', 0.0)), curvature(t['x'], t.get('y', 0.0)))
