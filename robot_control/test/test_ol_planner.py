@@ -44,7 +44,7 @@ def test_shortest_direction_and_skip():
 def test_timing_and_ready(tmp_path):
     c = Calibration.load(tmp_path / 'f.yaml', 'f', create=True)
     for T in (2.0, 4.0):
-        c.drive_trials().append({'cmd': 0.3, 'T': T, 'trim': 0, 'x': 0.375 * T, 'y': 0})
+        c.drive_trials().append({'cmd': 0.3, 'T': T, 'x': 0.375 * T, 'y': 0})
     wps = [(0, 0, 0), (1, 0, 0), (1, 1, math.pi / 2)]
     legs = plan(wps, c)
     assert legs[0].steps[0].T == pytest.approx(1.0 / 0.375)
@@ -56,7 +56,7 @@ def test_timing_and_ready(tmp_path):
 
 
 def test_wheel_cmds():
-    assert wheel_cmds('drive', 'fwd', 0.3, 0.1) == pytest.approx((0.27, 0.33))
+    assert wheel_cmds('drive', 'fwd', 0.3) == (0.3, 0.3)
     assert wheel_cmds('spin', 'ccw', 0.35) == (-0.35, 0.35)
     assert wheel_cmds('spin', 'cw', 0.35) == (0.35, -0.35)
 

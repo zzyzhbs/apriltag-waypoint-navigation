@@ -100,8 +100,8 @@ def ready(legs):
     return all(s.T is not None for leg in legs for s in leg.steps)
 
 
-def format_plan(legs, trim=0.0):
-    lines = [f'drive trim {trim:+.4f}']
+def format_plan(legs):
+    lines = []
     total = 0.0
     for leg in legs:
         gx, gy, gth = leg.goal
@@ -124,7 +124,7 @@ def main():
     a = ap.parse_args()
     calib = Calibration.load(a.calib)
     legs = plan(load_waypoints(a.waypoints), calib, a.drive_cmd, a.spin_cmd)
-    print(format_plan(legs, calib.trim))
+    print(format_plan(legs))
     if not ready(legs):
         print('NOT READY: some steps have no calibrated T')
 

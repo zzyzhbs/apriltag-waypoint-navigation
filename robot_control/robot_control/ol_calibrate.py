@@ -1,7 +1,7 @@
 """Open-loop calibration tool. Needs stdin (use ros2 run); motor_control must be running.
 
 ros2 run robot_control ol_calibrate --ros-args -p floor:=wood -p mode:=drive \
-    -p cmds:="[0.3]" -p durations:="[2.0, 3.0, 4.0, 5.0]" -p repeats:=2 [-p trim:=0.02]
+    -p cmds:="[0.3]" -p durations:="[2.0, 3.0, 4.0, 5.0]" -p repeats:=2
 ros2 run robot_control ol_calibrate --ros-args -p floor:=wood -p mode:=spin \
     -p dir:=both -p cmds:="[0.35]" -p durations:="[0.5, 1.0, 1.5, 2.0]" -p repeats:=2
 ros2 run robot_control ol_calibrate --ros-args -p floor:=wood -p mode:=verify
@@ -12,7 +12,7 @@ import random
 
 from robot_control import ol_node
 from robot_control.ol_model import (
-    DEFAULT_CALIB_DIR, DIRS, Calibration, ModelError, curvature, format_fit,
+    DEFAULT_CALIB_DIR, DIRS, Calibration, ModelError, format_fit,
 )
 
 DEFAULT_DURATIONS = {'drive': [2.0, 3.0, 4.0, 5.0], 'spin': [0.5, 1.0, 1.5, 2.0]}
@@ -47,10 +47,6 @@ def ask_num(text):
             print('  Please enter a number.')
 
 
-def ask_yes(text):
-    return input(f'{text} [y/N] ').strip().lower() in ('y', 'yes')
-
-
 class CalibrateNode(ol_node.MotorNode):
     def __init__(self):
         super().__init__('ol_calibrate_node')
@@ -61,7 +57,6 @@ class CalibrateNode(ol_node.MotorNode):
         self.durations = self.floats_param('durations', DEFAULT_DURATIONS.get(self.mode, [1.0]))
         self.repeats = int(self.param('repeats', 1))
         self.dir = self.param('dir', 'both')
-        self.trim_override = self.param('trim', '')
         self.drive_cmd = self.float_param('drive_cmd', 0.3)
         self.spin_cmd = self.float_param('spin_cmd', 0.35)
         self.run_ = self.runner(self.float_param('settle_s', 1.0))
@@ -85,7 +80,6 @@ class CalibrateNode(ol_node.MotorNode):
     # ---------- modes ----------
 
     def run_drive(self):
-        trim = self.calib.trim if self.trim_override == '' else float(self.trim_override)
         jobs = list(itertools.product(self.cmds, self.durations, range(self.repeats)))
         random.shuffle(jobs)
         for i, (c, T, _) in enumerate(jobs, 1):
@@ -97,12 +91,11 @@ class CalibrateNode(ol_node.MotorNode):
             def store(m):
                 x, y = m
                 self.calib.add(self.calib.drive_trials(), {
-                    'cmd': c, 'T': T, 'trim': trim, 'x': round(x, 4), 'y': round(y, 4)})
-                print(f'  saved; curvature {curvature(x, y):+.4f} 1/m')
+                    'cmd': c, 'T': T, 'x': round(x, 4), 'y': round(y, 4)})
+                print('  saved')
 
-            self.trial(f'[{i}/{len(jobs)}] drive cmd {c:g} T {T:g} s trim {trim:+.4f} '
-                       f'(~{c * T:.2f} m)',
-                       lambda: self.run_.run_step('drive', 'fwd', c, T, trim),
+            self.trial(f'[{i}/{len(jobs)}] drive cmd {c:g} T {T:g} s (~{c * T:.2f} m)',
+                       lambda: self.run_.run_step('drive', 'fwd', c, T),
                        measure, store)
             self.level_done(jobs[i:], c, 'drive')
 
@@ -138,29 +131,15 @@ class CalibrateNode(ol_node.MotorNode):
         for d in DIRS:
             for c, f in sorted(self.calib.spin_fits(d).items()):
                 print(format_fit(f'spin {d}', c, f, 'deg'))
-        pts = self.calib.trim_points(self.drive_cmd)
-        print(f'trim points at cmd {self.drive_cmd:g} (trim, curvature 1/m): '
-              + ', '.join(f'({t:+.4f}, {k:+.4f})' for t, k in pts))
-        trim = self.calib.suggest_trim(self.drive_cmd)
-        if trim is None:
-            print(f'current trim {self.calib.trim:+.4f}; need 2+ different trims to solve')
-            return
-        print(f'current trim {self.calib.trim:+.4f}, suggested {trim:+.4f}')
-        if ask_yes('Write suggested trim?'):
-            self.calib.trim = trim
-            self.calib.save()
-            print('  saved')
 
     def run_verify(self):
-        trim = self.calib.trim
         for kind, d, target in VERIFY:
             c = self.drive_cmd if kind == 'drive' else self.spin_cmd
             if kind == 'drive':
                 T, warn = self.calib.drive_time(target, c)
             else:
                 T, warn = self.calib.spin_time(d, target, c)
-            rec = {'kind': kind, 'dir': d, 'target': target, 'cmd': c, 'T': round(T, 3),
-                   'trim': trim if kind == 'drive' else 0.0}
+            rec = {'kind': kind, 'dir': d, 'target': target, 'cmd': c, 'T': round(T, 3)}
 
             def measure():
                 if kind == 'drive':
@@ -175,7 +154,7 @@ class CalibrateNode(ol_node.MotorNode):
 
             self.trial(f'verify {kind} {d} {target:g} -> cmd {c:g} T {T:.2f} s'
                        + (f'  !! {warn}' if warn else ''),
-                       lambda: self.run_.run_step(kind, d, c, T, trim if kind == 'drive' else 0),
+                       lambda: self.run_.run_step(kind, d, c, T),
                        measure, store)
 
     def run(self):

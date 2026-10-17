@@ -8,9 +8,9 @@ RATE_HZ = 50.0
 STOP_REPEATS = 5
 
 
-def wheel_cmds(kind, direction, cmd, trim=0.0):
+def wheel_cmds(kind, direction, cmd):
     if kind == 'drive':
-        return cmd * (1.0 - trim), cmd * (1.0 + trim)
+        return cmd, cmd
     if direction == 'ccw':
         return -cmd, cmd
     if direction == 'cw':
@@ -48,6 +48,6 @@ class PrimitiveRunner:
         self.sleep(self.settle_s)
         return t0, t1
 
-    def run_step(self, kind, direction, cmd, T, trim=0.0):
-        L, R = wheel_cmds(kind, direction, cmd, trim)
+    def run_step(self, kind, direction, cmd, T):
+        L, R = wheel_cmds(kind, direction, cmd)
         return (L, R), self.run(L, R, T)

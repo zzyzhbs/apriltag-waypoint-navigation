@@ -35,7 +35,7 @@ class VelocityControlNode(ol_node.MotorNode):
                          pos_tol=self.float_param('pos_tol', 0.02),
                          min_turn_deg=self.float_param('min_turn_deg', 2.0))
         print(f'calibration: {self.calib.path}\nwaypoints: {wp_path}')
-        print(format_plan(self.legs, self.calib.trim))
+        print(format_plan(self.legs))
 
     def run(self):
         if not ready(self.legs):
@@ -47,7 +47,6 @@ class VelocityControlNode(ol_node.MotorNode):
         for i in range(COUNTDOWN_S, 0, -1):
             print(f'starting in {i}...')
             time.sleep(1.0)
-        trim = self.calib.trim
         with open(path, 'w', newline='') as f:
             log = csv.writer(f)
             log.writerow(['wp', 'kind', 'dir', 'amount', 'cmd', 'L', 'R', 'T',
@@ -56,8 +55,7 @@ class VelocityControlNode(ol_node.MotorNode):
             for leg in self.legs:
                 for s in leg.steps:
                     print(f'wp{leg.index}: {s.describe()}')
-                    (L, R), (t0, t1) = self.run_.run_step(
-                        s.kind, s.dir, s.cmd, s.T, trim if s.kind == 'drive' else 0.0)
+                    (L, R), (t0, t1) = self.run_.run_step(s.kind, s.dir, s.cmd, s.T)
                     log.writerow([leg.index, s.kind, s.dir, f'{s.amount:.4f}', s.cmd,
                                   f'{L:.4f}', f'{R:.4f}', f'{s.T:.3f}',
                                   f'{t0 - t_ref:.3f}', f'{t1 - t_ref:.3f}'])

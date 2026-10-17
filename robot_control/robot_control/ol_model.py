@@ -55,24 +55,12 @@ def fit_line(points):
     return LineFit(rate, offset, rms, n, distinct, min(Ts), max(Ts))
 
 
-def fit_at(fits, cmd):
-    """Fit for cmd; linear interpolation between neighbouring levels, no extrapolation."""
-    if not fits:
-        raise ModelError('not calibrated')
-    keys = sorted(fits)
-    for k in keys:
+def fit_for(fits, cmd):
+    """Fit of the calibrated level cmd (exact match only)."""
+    for k, f in fits.items():
         if abs(k - cmd) < 1e-9:
-            return fits[k]
-    if not keys[0] < cmd < keys[-1]:
-        raise ModelError(f'cmd {cmd} outside calibrated levels {keys}')
-    hi = next(k for k in keys if k > cmd)
-    lo = keys[keys.index(hi) - 1]
-    a, b, w = fits[lo], fits[hi], (cmd - lo) / (hi - lo)
-    return LineFit(
-        rate=a.rate + w * (b.rate - a.rate),
-        offset=a.offset + w * (b.offset - a.offset),
-        rms=max(a.rms, b.rms), n=0, n_durations=min(a.n_durations, b.n_durations),
-        t_min=min(a.t_min, b.t_min), t_max=max(a.t_max, b.t_max))
+            return f
+    raise ModelError(f'cmd {cmd} not calibrated (levels: {sorted(fits)})')
 
 
 def invert(fit, target):
@@ -88,21 +76,6 @@ def invert(fit, target):
     elif fit.n_durations < 2:
         warn = 'only one calibrated duration (offset assumed 0)'
     return T, warn
-
-
-def curvature(x, y):
-    """Signed curvature of the circle through (0,0) tangent to +x and through (x, y)."""
-    return 2.0 * y / (x * x + y * y)
-
-
-def solve_trim(points):
-    """Secant / linear fit of curvature vs trim over [(trim, kappa)]; trim where kappa = 0."""
-    if len({p[0] for p in points}) < 2:
-        return None
-    fit = fit_line(points)
-    if fit.rate == 0:
-        return None
-    return -fit.offset / fit.rate
 
 
 def wrap_deg(a):
@@ -123,8 +96,7 @@ class Calibration:
     def __init__(self, data, path=None):
         self.data = data
         self.path = path
-        data.setdefault('drive', {}).setdefault('trim', 0.0)
-        data['drive'].setdefault('trials', [])
+        data.setdefault('drive', {}).setdefault('trials', [])
         for d in DIRS:
             data.setdefault('spin', {}).setdefault(d, {}).setdefault('trials', [])
         data.setdefault('verify', [])
@@ -162,14 +134,6 @@ class Calibration:
 
     # ---------- data ----------
 
-    @property
-    def trim(self):
-        return float(self.data['drive']['trim'])
-
-    @trim.setter
-    def trim(self, value):
-        self.data['drive']['trim'] = round(float(value), 4) + 0.0  # no -0.0
-
     def drive_trials(self):
         return self.data['drive']['trials']
 
@@ -199,10 +163,10 @@ class Calibration:
         return {c: fit_line(p) for c, p in groups.items()}
 
     def drive_time(self, dist, cmd):
-        return invert(fit_at(self.drive_fits(), cmd), dist)
+        return invert(fit_for(self.drive_fits(), cmd), dist)
 
     def spin_time(self, d, deg, cmd):
-        fit = fit_at(self.spin_fits(d), cmd)
+        fit = fit_for(self.spin_fits(d), cmd)
         T, warn = invert(fit, deg)
         # Optional direction-specific correction to command duration. Keep raw
         # trial angles intact so the measured fit remains auditable.
@@ -215,14 +179,6 @@ class Calibration:
         if T < fit.t_min * (1 - EXTRAP) or T > fit.t_max * (1 + EXTRAP):
             warn = f'adjusted T = {T:.2f} s outside calibrated {fit.t_min:g}-{fit.t_max:g} s'
         return T, warn
-
-    def trim_points(self, cmd=None):
-        return [(float(t.get('trim', 0.0)), curvature(t['x'], t.get('y', 0.0)))
-                for t in self.drive_trials()
-                if cmd is None or abs(t['cmd'] - cmd) < 1e-9]
-
-    def suggest_trim(self, cmd=None):
-        return solve_trim(self.trim_points(cmd))
 
     def summary(self):
         def dump(fits):
