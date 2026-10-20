@@ -1,6 +1,7 @@
 # Open-loop HW1: calibrate and run
 
-Branch `open_loop`. Final calibration: **`study_wood2`** (study-room wood floor, 2026-10-14 night).
+Branch `main` (the open-loop code; the old IMU closed-loop code is in `imu_version`).
+Final calibration: **`study_wood2`** (study-room wood floor, 2026-10-14 night).
 
 | File | What |
 |---|---|
@@ -13,23 +14,34 @@ Branch `open_loop`. Final calibration: **`study_wood2`** (study-room wood floor,
 ## Setup on the robot
 
 ```bash
-cd ~/ros2_ws/src/CSE276A && git fetch && git checkout open_loop && git pull
+cd ~/ros2_ws/src/CSE276A && git fetch && git checkout main && git pull
 cd ~/ros2_ws && colcon build --packages-select robot_control
-source ~/ros2_ws/install/setup.bash
 ```
+
+Rebuild after every pull. Each new terminal (ssh session) must source the workspace first:
+`source ~/ros2_ws/install/setup.bash`
 
 ## Re-run the demo
 
 Robot at (0, 0) facing +x, ~2.5 m x 2.5 m clear area.
 
+Terminal 1 — motor driver (keep it running; Ctrl-C stops it):
 ```bash
+source ~/ros2_ws/install/setup.bash
+ros2 run robot_control motor_control
+```
+
+Terminal 2 — waypoint runner:
+```bash
+source ~/ros2_ws/install/setup.bash
 # check the plan first (no motion); T values should match the demo log
 ros2 run robot_control velocity_control --ros-args -p floor:=study_wood2 -p dry_run:=true
-# run (starts motor_control too)
-ros2 launch robot_control hw1_launch.py floor:=study_wood2
-# or, with motor_control already running in another pane:
+# run
 ros2 run robot_control velocity_control --ros-args -p floor:=study_wood2
 ```
+
+Alternative (one terminal): `ros2 launch robot_control hw1_launch.py floor:=study_wood2`
+starts motor_control and velocity_control together.
 
 The robot pauses 1 s at each waypoint and prints `>>> Reached waypoint i`.
 Log: `HW1/logs/run_<floor>_<time>.csv`.
@@ -42,9 +54,10 @@ python -m robot_control.ol_planner ../HW1/waypoints.txt config/open_loop/study_w
 
 ## Calibrate a new floor (what we did for study_wood2)
 
-Keep `motor_control` running in pane 1; in pane 2:
+Terminal 1: `motor_control` as above. Terminal 2:
 
 ```bash
+source ~/ros2_ws/install/setup.bash
 C="ros2 run robot_control ol_calibrate --ros-args -p floor:=<new_floor>"
 $C -p mode:=drive -p cmds:="[0.3]" -p durations:="[2.0, 3.0, 4.0]" -p repeats:=2
 $C -p mode:=spin -p dir:=both -p cmds:="[0.35]" -p durations:="[0.4, 0.8, 1.2, 1.6]" -p repeats:=2
