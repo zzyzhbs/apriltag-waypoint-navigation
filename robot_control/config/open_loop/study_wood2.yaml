@@ -10,6 +10,7 @@ drive:
   - {cmd: 0.3, T: 4.0, trim: 0.0, x: 1.555, y: 0.063, time: '2026-10-15T05:49:05'}
 spin:
   ccw:
+    time_scale: 0.83
     trials:
     - {cmd: 0.35, T: 1.2, angle: 135.0, time: '2026-10-15T05:51:31'}
     - {cmd: 0.35, T: 0.4, angle: 47.0, time: '2026-10-15T05:55:03'}
@@ -20,7 +21,7 @@ spin:
     - {cmd: 0.35, T: 0.8, angle: 98.0, time: '2026-10-15T05:59:24'}
     - {cmd: 0.35, T: 0.4, angle: 44.0, time: '2026-10-15T06:01:09'}
   cw:
-    time_scale: 1.15  # Applied to every CW spin on this floor
+    time_scale: 1.00  # Applied to every CW spin on this floor
     trials:
     - {cmd: 0.35, T: 1.6, angle: 202.0, time: '2026-10-15T05:50:45'}
     - {cmd: 0.35, T: 0.4, angle: 53.0, time: '2026-10-15T05:51:59'}
