@@ -179,3 +179,26 @@ def test_cli_end_to_end(tmp_path):
     assert cc.main(['verify', *common, '--calib', str(out)]) == 0
     assert len(list((img_dir / 'verify').glob('*.png'))) == 14
     assert 'holdout RMS' in (img_dir / 'calib_report.txt').read_text()
+
+
+def test_multistart_wide_angle_frontal_views():
+    # Robot-like case (2026-10-21): strong barrel distortion, near-frontal views.
+    # Plain calibrateCamera without a guess lands on fx ~1160 here.
+    K = np.array([[643.0, 0, 630], [0, 646, 312], [0, 0, 1]])
+    D = np.array([[-0.33, 0.116, 0, 0.001, -0.019]])
+    board = cc.BoardSpec(9, 6, 0.028)
+    objp = board.object_points()
+    rng = np.random.default_rng(0)
+    pts = []
+    while len(pts) < 30:
+        r = np.radians(rng.uniform([-12, -12, -8], [12, 12, 8]))
+        z = rng.uniform(0.3, 0.9)
+        t = np.array([rng.uniform(-0.9, 0.6) * z, rng.uniform(-0.5, 0.4) * z, z])
+        p = cv2.projectPoints(objp, r, t, K, D)[0]
+        q = p.reshape(-1, 2)
+        if q.min() > 5 and q[:, 0].max() < SIZE[0] - 5 and q[:, 1].max() < SIZE[1] - 5:
+            pts.append((p + rng.normal(0, 0.2, p.shape)).astype(np.float32))
+    res = cc.calibrate_points(pts, board, SIZE)
+    assert res.K[0, 0] == pytest.approx(643.0, rel=0.02)
+    assert res.K[1, 1] == pytest.approx(646.0, rel=0.02)
+    assert res.rms < 0.4

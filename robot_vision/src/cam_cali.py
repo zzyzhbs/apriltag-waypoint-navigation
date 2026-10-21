@@ -21,6 +21,10 @@ import numpy as np
 DEFAULT_YAML = Path(__file__).resolve().parent.parent / 'config' / 'camera_parameter.yaml'
 IMG_EXTS = ('.png', '.jpg', '.jpeg')
 MIN_IMAGES = 10
+# Initial fx guesses as a fraction of image width (~130 deg to ~40 deg HFOV).
+# Without a guess OpenCV assumes no distortion and can lock onto a wrong
+# minimum (fx ~2000 px) on this wide-angle lens.
+FX_GUESSES = (0.3, 0.4, 0.5, 0.65, 0.8, 1.0, 1.4)
 NOVELTY = 0.2
 STILL_PX_PER_S = 20.0
 PROCESS_DT = 0.2
@@ -155,10 +159,13 @@ def rms_of(img_pts, proj):
     return float(np.sqrt(np.mean(err ** 2)))
 
 
-def _calib_once(img_pts, board, size, flags):
+def _calib_once(img_pts, board, size, flags, K0=None, D0=None):
     objp = board.object_points()
+    if K0 is not None:
+        flags |= cv2.CALIB_USE_INTRINSIC_GUESS
+        K0, D0 = K0.copy(), None if D0 is None else D0.copy()
     rms, K, D, rvecs, tvecs = cv2.calibrateCamera(
-        [objp] * len(img_pts), img_pts, size, None, None, flags=flags)
+        [objp] * len(img_pts), img_pts, size, K0, D0, flags=flags)
     per = [rms_of(c, cv2.projectPoints(objp, r, t, K, D)[0])
            for c, r, t in zip(img_pts, rvecs, tvecs)]
     # OpenCV may return 14 coeffs; the extra ones are 0 unless their flags are set
@@ -166,12 +173,30 @@ def _calib_once(img_pts, board, size, flags):
     return rms, K, D.reshape(1, -1)[:, :n], per
 
 
+def _calib_multistart(img_pts, board, size, flags):
+    """Run from several initial focal lengths and keep the lowest RMS."""
+    w, h = size
+    starts = [None] + [np.array([[f * w, 0, w / 2], [0, f * w, h / 2], [0, 0, 1]])
+                       for f in FX_GUESSES]
+    best = None
+    for K0 in starts:
+        try:
+            r = _calib_once(img_pts, board, size, flags, K0)
+        except cv2.error:
+            continue
+        if best is None or r[0] < best[0]:
+            best = r
+    if best is None:
+        raise SystemExit('calibration failed for every initial guess')
+    return best
+
+
 def calibrate_points(img_pts, board, size, model='plumb_bob', names=None):
     names = names or [f'view_{i:03d}' for i in range(len(img_pts))]
     if len(img_pts) < MIN_IMAGES:
         raise SystemExit(f'only {len(img_pts)} usable images, need at least {MIN_IMAGES}')
     flags = cv2.CALIB_RATIONAL_MODEL if model == 'rational' else 0
-    rms, K, D, per = _calib_once(img_pts, board, size, flags)
+    rms, K, D, per = _calib_multistart(img_pts, board, size, flags)
 
     # One round of outlier rejection
     thresh = max(2.0 * float(np.median(per)), 1.0)
@@ -180,7 +205,7 @@ def calibrate_points(img_pts, board, size, model='plumb_bob', names=None):
     if rejected and len(keep) >= MIN_IMAGES:
         img_pts = [img_pts[i] for i in keep]
         names = [names[i] for i in keep]
-        rms, K, D, per = _calib_once(img_pts, board, size, flags)
+        rms, K, D, per = _calib_once(img_pts, board, size, flags, K, D)
     else:
         rejected = []
 
