@@ -22,7 +22,8 @@ DEFAULT_YAML = Path(__file__).resolve().parent.parent / 'config' / 'camera_param
 IMG_EXTS = ('.png', '.jpg', '.jpeg')
 MIN_IMAGES = 10
 NOVELTY = 0.2
-STILL_PX = 2.0
+STILL_PX_PER_S = 20.0
+PROCESS_DT = 0.2
 SUBPIX_CRITERIA = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-3)
 
 
@@ -97,8 +98,20 @@ def view_metrics(corners, size, board):
     return np.array([px, py, p_size, skew])
 
 
+def novelty(m, saved):
+    """L1 distance to the closest saved view (inf if none)."""
+    return min((float(np.abs(m - s).sum()) for s in saved), default=math.inf)
+
+
 def is_novel(m, saved, thresh=NOVELTY):
-    return all(np.abs(m - s).sum() > thresh for s in saved)
+    return novelty(m, saved) > thresh
+
+
+def corner_speed(c, prev, dt):
+    """Mean corner motion in px/s; tolerant to OpenCV flipping the corner order."""
+    d = min(np.linalg.norm(c - prev, axis=2).mean(),
+            np.linalg.norm(c[::-1] - prev, axis=2).mean())
+    return d / max(dt, 1e-3)
 
 
 def coverage(saved):
@@ -407,7 +420,10 @@ def cmd_capture(args, board):
                                                 qos_profile_sensor_data)
             self.dbg = self.create_publisher(CompressedImage, args.debug_topic, 1)
             self.last_t = 0.0
+            self.last_save = 0.0
             self.prev = None
+            self.prev_stamp = 0.0
+            self.last_status = ''
             self.saved = {'calib': [], 'holdout': []}
             self.phase = 'calib' if args.target > 0 else 'holdout'
             self.done = False
@@ -415,9 +431,10 @@ def cmd_capture(args, board):
 
         def on_image(self, msg):
             now = time.monotonic()
-            if self.done or now - self.last_t < args.period:
+            if self.done or now - self.last_t < PROCESS_DT:
                 return
             self.last_t = now
+            stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             if not self.got_image:
                 self.got_image = True
                 print(f'receiving {msg.width}x{msg.height} {msg.encoding}')
@@ -427,15 +444,19 @@ def cmd_capture(args, board):
             c = find_corners(gray, board, fast=True)
             status = 'no board'
             if c is not None:
-                still = (self.prev is not None and
-                         np.linalg.norm(c - self.prev, axis=2).mean() < STILL_PX)
+                speed = (math.inf if self.prev is None
+                         else corner_speed(c, self.prev, stamp - self.prev_stamp))
                 m = view_metrics(c, size, board)
                 saved = self.saved[self.phase]
-                if not still:
-                    status = 'hold still'
-                elif not is_novel(m, saved):
-                    status = 'move to a new view'
+                dist = novelty(m, saved)
+                if speed > args.still:
+                    status = 'hold still' + ('' if math.isinf(speed) else f' ({speed:.0f} px/s)')
+                elif dist <= args.novelty:
+                    status = f'move to a new view (dist {dist:.2f} <= {args.novelty})'
+                elif stamp - self.last_save < args.period:
+                    status = 'wait'
                 else:
+                    self.last_save = stamp
                     d = out_dir if self.phase == 'calib' else hold_dir
                     d.mkdir(exist_ok=True)
                     name = f'img_{len(saved):03d}.png'
@@ -444,8 +465,12 @@ def cmd_capture(args, board):
                     status = f'saved {self.phase}/{name}'
                     self.report()
                     self.advance()
-            self.prev = c
+            self.prev, self.prev_stamp = c, stamp
             self.publish_debug(img, c, status)
+            key = status.split(' (')[0]
+            if key != self.last_status and not key.startswith('saved'):
+                print(f'  {status}')
+            self.last_status = key
 
         def report(self):
             n = len(self.saved[self.phase])
@@ -512,7 +537,11 @@ def main(argv=None):
     p.add_argument('--topic', default='/camera/image_raw')
     p.add_argument('--target', type=int, default=40)
     p.add_argument('--holdout', type=int, default=8)
-    p.add_argument('--period', type=float, default=1.0)
+    p.add_argument('--period', type=float, default=1.0, help='min seconds between saves')
+    p.add_argument('--still', type=float, default=STILL_PX_PER_S,
+                   help='max mean corner speed (px/s) to count as still')
+    p.add_argument('--novelty', type=float, default=NOVELTY,
+                   help='min L1 distance to every saved view')
     p.add_argument('--debug-topic', default='/cam_cali/debug')
 
     p = sub.add_parser('calibrate', parents=[common])
