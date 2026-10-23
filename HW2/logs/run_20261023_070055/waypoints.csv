@@ -1,0 +1,3 @@
+t,wp,goal_x,goal_y,goal_theta_deg,reached,tag_based,x,y,theta_deg,sx,sy,stheta_deg,iters,tags,note
+10.96,1,1.0000,0.0000,0.00,1,1,1.0000,0.0024,0.09,0.0319,0.0310,1.96,3,0,
+39.90,2,1.0000,2.0000,180.00,1,0,1.0000,2.0000,180.00,0.2446,0.0533,13.01,10,,no tag seen; reached by prediction only

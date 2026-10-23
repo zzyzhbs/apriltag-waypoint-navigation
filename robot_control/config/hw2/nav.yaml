@@ -31,7 +31,7 @@ control:
 ekf:
   init_sigma: {xy: 0.01, theta_deg: 1.0}
   motion:               # process noise per primitive
-    k_d: 0.02           # along-track std per m driven
+    k_d: 0.08           # along-track std per m driven
     c_d: 0.01           # m, along-track std per drive
     k_lat: 0.03         # cross-track std per m driven
     k_hd_deg: 2.0       # heading std per m driven
