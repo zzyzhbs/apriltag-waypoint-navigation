@@ -34,6 +34,7 @@ setup(
             'motor_control = robot_control.motor_control:main',
             'velocity_control = robot_control.velocity_control:main',
             'ol_calibrate = robot_control.ol_calibrate:main',
+            'hw2_probe = robot_control.hw2_probe:main',
         ],
     },
 )
