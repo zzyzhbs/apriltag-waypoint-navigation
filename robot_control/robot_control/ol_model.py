@@ -63,13 +63,13 @@ def fit_for(fits, cmd):
     raise ModelError(f'cmd {cmd} not calibrated (levels: {sorted(fits)})')
 
 
-def invert(fit, target):
+def invert(fit, target, min_T=MIN_T):
     """Run time T reaching target. Returns (T, warning or None)."""
     if fit.rate <= 0:
         raise ModelError(f'non-positive rate {fit.rate:.3f}')
     T = (target - fit.offset) / fit.rate
-    if T < MIN_T:
-        raise ModelError(f'T = {T:.2f} s < {MIN_T} s for target {target:g}')
+    if T < min_T:
+        raise ModelError(f'T = {T:.2f} s < {min_T} s for target {target:g}')
     warn = None
     if T < fit.t_min * (1 - EXTRAP) or T > fit.t_max * (1 + EXTRAP):
         warn = f'T = {T:.2f} s outside calibrated {fit.t_min:g}-{fit.t_max:g} s'
@@ -162,20 +162,28 @@ class Calibration:
             groups.setdefault(float(t['cmd']), []).append((float(t['T']), abs(t['angle'])))
         return {c: fit_line(p) for c, p in groups.items()}
 
+    def min_T(self, section, cmd):
+        """Shortest allowed run for one level: section['min_T'][cmd], else MIN_T."""
+        for k, v in (section.get('min_T') or {}).items():
+            if abs(float(k) - cmd) < 1e-9:
+                return float(v)
+        return MIN_T
+
     def drive_time(self, dist, cmd):
-        return invert(fit_for(self.drive_fits(), cmd), dist)
+        return invert(fit_for(self.drive_fits(), cmd), dist, self.min_T(self.data['drive'], cmd))
 
     def spin_time(self, d, deg, cmd):
         fit = fit_for(self.spin_fits(d), cmd)
-        T, warn = invert(fit, deg)
+        min_T = self.min_T(self.data['spin'][d], cmd)
+        T, warn = invert(fit, deg, min_T)
         # Optional direction-specific correction to command duration. Keep raw
         # trial angles intact so the measured fit remains auditable.
         scale = float(self.data['spin'][d].get('time_scale', 1.0))
         if not math.isfinite(scale) or scale <= 0:
             raise ModelError(f'spin {d} time_scale must be positive and finite')
         T *= scale
-        if T < MIN_T:
-            raise ModelError(f'adjusted T = {T:.2f} s < {MIN_T} s for target {deg:g}')
+        if T < min_T:
+            raise ModelError(f'adjusted T = {T:.2f} s < {min_T} s for target {deg:g}')
         if T < fit.t_min * (1 - EXTRAP) or T > fit.t_max * (1 + EXTRAP):
             warn = f'adjusted T = {T:.2f} s outside calibrated {fit.t_min:g}-{fit.t_max:g} s'
         return T, warn
