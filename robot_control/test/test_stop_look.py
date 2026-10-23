@@ -56,6 +56,33 @@ def test_next_move_turn_drive_turn():
     assert next_move(Pose2(1.01, 1.99, math.radians(178)), goal, P) is None
 
 
+def coarse_feasible(tmp_path):
+    """Only the HW1 levels: min drive ~5.5 cm, min spin ~24 deg."""
+    c = Calibration.load(tmp_path / 'coarse.yaml', 'coarse', create=True)
+    for T in (2.0, 3.0, 4.0):
+        c.drive_trials().append({'cmd': 0.3, 'T': T, 'x': 0.396 * T - 0.024, 'y': 0.0})
+    for d in ('ccw', 'cw'):
+        for T in (0.4, 0.8, 1.6):
+            c.spin_trials(d).append({'cmd': 0.35, 'T': T, 'angle': 125.0 * T - 6.0})
+    return lambda m: not below_min_step(m, c, P)
+
+
+def test_next_move_drives_when_align_turn_too_small(tmp_path):
+    # run_20261023_071302: 2 m short of WP2, 3.7 deg off -> must drive, not stop
+    ok = coarse_feasible(tmp_path)
+    m = next_move(Pose2(0.966, 0.015, math.radians(92.7)), Pose2(1.0, 2.0, math.pi), P, ok)
+    assert m.kind == 'drive' and m.value == pytest.approx(P.max_drive)
+
+
+def test_next_move_skips_to_heading_when_drive_too_small(tmp_path):
+    # 3.4 cm short of WP1: no turn towards it; fix the final heading instead
+    ok = coarse_feasible(tmp_path)
+    goal = Pose2(1.0, 0.0, 0.0)
+    m = next_move(Pose2(0.969, 0.015, math.radians(-26.1)), goal, P, ok)
+    assert m.kind == 'spin' and m.value == pytest.approx(math.radians(26.1))
+    assert next_move(Pose2(0.969, 0.015, math.radians(-0.4)), goal, P, ok) is None
+
+
 def test_drive_length_undershoots_and_caps():
     assert drive_length(0.2, P) == pytest.approx(0.2)               # short: as is
     assert drive_length(0.8, P) == pytest.approx(0.8 - 0.03 * 0.8 - 0.08)

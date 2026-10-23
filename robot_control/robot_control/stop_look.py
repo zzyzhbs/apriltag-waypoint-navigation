@@ -74,15 +74,22 @@ def drive_length(dist, p):
     return min(dist, p.max_drive)
 
 
-def next_move(pose, goal, p):
-    """Turn towards the goal, drive to it, then turn to its heading. None = reached."""
+def next_move(pose, goal, p, feasible=lambda move: True):
+    """Turn towards the goal, drive to it, then turn to its heading. None = reached.
+
+    Moves too small to execute (`feasible` False) are skipped: an aligning turn
+    is dropped (drive anyway), a drive ends the position phase.
+    """
     dx, dy = goal.x - pose.x, goal.y - pose.y
     dist = math.hypot(dx, dy)
-    if dist > p.pos_tol:
+    if dist > p.pos_tol and feasible(Move('drive', dist)):
         bearing = wrap_angle(math.atan2(dy, dx) - pose.theta)
-        if abs(bearing) > align_tol(dist, p):
-            return Move('spin', bearing)
-        return Move('drive', drive_length(dist * math.cos(bearing), p))
+        align = Move('spin', bearing)
+        if abs(bearing) > align_tol(dist, p) and feasible(align):
+            return align
+        drive = Move('drive', drive_length(dist * math.cos(bearing), p))
+        if feasible(drive):
+            return drive
     turn = wrap_angle(goal.theta - pose.theta)
     if abs(turn) > p.ang_tol:
         return Move('spin', turn)
@@ -280,7 +287,8 @@ class Navigator:
     def choose_move(self, goal, tag_based, searched):
         """Next move, and the id of the tag it searches for (None if not a search)."""
         pose, landmarks = self.pose(), self.map.landmarks.values()
-        move = next_move(pose, goal, self.p)
+        move = next_move(pose, goal, self.p,
+                         lambda m: not below_min_step(m, self.calib, self.p))
         if move is None and not tag_based and len(searched) < self.p.max_searches:
             return search_move(pose, landmarks, self.p, searched)
         if move is None:
