@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.py')),
         ('share/' + package_name + '/config/open_loop', glob('config/open_loop/*.yaml')),
+        ('share/' + package_name + '/config/hw2', glob('config/hw2/*.yaml')),
     ],
     install_requires=[
         'setuptools',

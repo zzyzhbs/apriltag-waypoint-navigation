@@ -1,0 +1,9 @@
+# HW2 landmark map (hand-measured; check with hw2_probe survey).
+# Each tag sits on the extension of one leg, 0.5 m past the leg's end,
+# facing back along the leg.
+frame: world
+tag_size: 0.166
+landmarks:              # yaw_deg = direction of the tag's outward normal in world
+  - {id: 0, x: 1.5, y: 0.0, yaw_deg: 180}         # leg 1: (0,0) -> (1,0)
+  - {id: 1, x: 1.0, y: 2.5, yaw_deg: -90}         # leg 2: (1,0) -> (1,2)
+  - {id: 2, x: -0.224, y: -0.447, yaw_deg: 63.43} # leg 3: (1,2) -> (0,0)
