@@ -16,10 +16,17 @@ look:                   # one look = robot standing still, frames averaged
   max_oblique_deg: 60.0
 
 control:
-  max_iters: 8          # looks per waypoint
+  max_iters: 15         # looks per waypoint
   max_searches: 2       # turns towards a tag when a waypoint had no tag update
+  search_max_dist: 2.5  # m, only search for tags closer than this
   align_min_deg: 3.0    # allowed heading error before driving, see stop_look.py
   align_max_deg: 15.0
+  view_half_deg: 35.0   # a tag counts as "in view" within this bearing (camera half FOV ~45)
+  max_drive: 1.2        # m, longer drives are split so the heading is corrected in between
+  undershoot_k: 0.03    # long drives stop short by k * dist + c: overshooting means turning
+  undershoot_c: 0.08    #   around (no reverse), undershooting only a short drive forward
+  undershoot_min: 0.3   # m, no undershoot below this distance
+  min_split_deg: 15.0   # split a turn that loses all tags only if the first part is this big
 
 ekf:
   init_sigma: {xy: 0.01, theta_deg: 1.0}
