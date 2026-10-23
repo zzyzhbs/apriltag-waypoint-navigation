@@ -69,13 +69,15 @@ def test_align_tol_clamped():
 
 def test_search_move_from_wp2():
     # at WP2 facing 180: tag 1 is 0.5 m away (needs -90 deg); tag 2 is too far, tag 0 too oblique
-    m = search_move(Pose2(1.0, 2.0, math.pi), MAP.landmarks.values(), P)
+    m, tag_id = search_move(Pose2(1.0, 2.0, math.pi), MAP.landmarks.values(), P)
+    assert tag_id == 1
     assert m.kind == 'spin' and m.value == pytest.approx(-math.pi / 2)
+    assert search_move(Pose2(1.0, 2.0, math.pi), MAP.landmarks.values(), P, {1}) == (None, None)
 
 
 def test_search_move_none_when_no_tag_reachable():
     far = [Landmark(9, 10.0, 0.0, math.pi)]
-    assert search_move(Pose2(0, 0, 0), far, P) is None
+    assert search_move(Pose2(0, 0, 0), far, P) == (None, None)
 
 
 def test_split_spin_keeps_tag_in_view_at_wp2():
@@ -119,7 +121,7 @@ class RecordLog(NavLog):
     def on_look(self, goal_index, records, pose, P):
         self.looks.append((goal_index, records))
 
-    def on_step(self, goal_index, step, before, after, P):
+    def on_step(self, goal_index, step, before, after, P, timing=None):
         self.steps.append((goal_index, step))
 
     def on_waypoint(self, result):
@@ -182,6 +184,18 @@ def test_sim_prediction_only_when_no_tag_reachable(tmp_path):
     r = nav.run_goal(1, GOALS[0])
     assert r.reached and not r.tag_based
     assert 'prediction only' in r.note
+
+
+def test_each_tag_searched_once(tmp_path):
+    # tags exist in the map but the camera never sees them
+    rover = SimRover(MAP, Pose2(0.0, 0.0, 0.0), np.random.default_rng(0))
+    log = RecordLog()
+    nav = Navigator(MAP, make_calib(tmp_path), P, NOISE, Pose2(0.0, 0.0, 0.0),
+                    lambda: ({}, {}), rover.execute, log)
+    r = nav.run_goal(3, Pose2(0.0, 0.0, 0.0))     # already there: only searching is left
+    big_turns = [s for _, s in log.steps if s.kind == 'spin' and s.amount > 30]
+    assert r.reached and not r.tag_based
+    assert len(big_turns) <= 2 * P.max_searches     # out and back, no repeats
 
 
 def test_halt_when_map_is_wrong(tmp_path):

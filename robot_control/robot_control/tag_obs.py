@@ -77,3 +77,25 @@ def aggregate(obs_list, min_count=MIN_COUNT, max_spread=MAX_SPREAD):
         else:
             accepted[tag_id] = obs
     return accepted, rejected
+
+
+def filter_window(raw, known_ids, limits):
+    """One look window -> ({id: TagObs}, {id: reason}).
+
+    limits: the `look:` section of nav.yaml (angles in degrees).
+    """
+    usable, rejected = [], {}
+    max_oblique = math.radians(limits['max_oblique_deg'])
+    for o in raw:
+        if o.id not in known_ids:
+            rejected[o.id] = 'not in map'
+        elif is_usable(o, limits['min_dist'], limits['max_dist'], max_oblique):
+            usable.append(o)
+        else:
+            rejected.setdefault(o.id, f'out of range (d {o.dist:.2f} m, '
+                                      f'oblique {math.degrees(o.oblique):.0f} deg)')
+    accepted, unstable = aggregate(usable, limits['min_count'], limits['max_spread'])
+    rejected.update(unstable)
+    for tag_id in accepted:
+        rejected.pop(tag_id, None)      # some frames were out of range, enough were fine
+    return accepted, rejected

@@ -99,18 +99,23 @@ def tag_bearing(pose, lm):
     return wrap_angle(math.atan2(lm.y - pose.y, lm.x - pose.x) - pose.theta)
 
 
-def search_move(pose, landmarks, p):
-    """Smallest turn that faces a tag close and frontal enough to be seen, or None."""
-    best = None
+def search_move(pose, landmarks, p, exclude=()):
+    """Smallest turn that faces a tag close and frontal enough to be seen.
+
+    Returns (Move, tag id), or (None, None). Tags in `exclude` were already searched.
+    """
+    best, best_id = None, None
     for lm in landmarks:
+        if lm.id in exclude:
+            continue
         if math.hypot(lm.x - pose.x, lm.y - pose.y) > p.search_max_dist:
             continue
         if tag_oblique_from(pose, lm) > p.max_oblique:
             continue
         turn = tag_bearing(pose, lm)
         if abs(turn) >= p.align_min and (best is None or abs(turn) < abs(best)):
-            best = turn
-    return None if best is None else Move('spin', best)
+            best, best_id = turn, lm.id
+    return (None, None) if best is None else (Move('spin', best), best_id)
 
 
 def expect_visible(pose, lm, p):
@@ -179,7 +184,8 @@ class NavLog:
     def on_look(self, goal_index, records, pose, P):
         pass
 
-    def on_step(self, goal_index, step, pose_before, pose_after, P):
+    def on_step(self, goal_index, step, pose_before, pose_after, P, timing=None):
+        """timing = (t_start, t_stop) of the motion if execute() returned it."""
         pass
 
     def on_waypoint(self, result):
@@ -208,7 +214,8 @@ class WaypointResult:
 
 
 class Navigator:
-    """look() -> (accepted {id: TagObs}, rejected {id: reason}); execute(step) runs it."""
+    """look() -> (accepted {id: TagObs}, rejected {id: reason});
+    execute(step) runs it and may return its (t_start, t_stop)."""
 
     def __init__(self, landmark_map, calib, params, noise, start_pose, look, execute,
                  log=None):
@@ -265,20 +272,20 @@ class Navigator:
         if step.T is None:
             return None
         before = self.pose()
-        self.execute(step)
+        timing = self.execute(step)
         self.predict(step_motion(step))
-        self.log.on_step(goal_index, step, before, self.pose(), self.P)
+        self.log.on_step(goal_index, step, before, self.pose(), self.P, timing)
         return step
 
-    def choose_move(self, goal, tag_based, searches):
-        """Next move and whether it is a search turn."""
+    def choose_move(self, goal, tag_based, searched):
+        """Next move, and the id of the tag it searches for (None if not a search)."""
         pose, landmarks = self.pose(), self.map.landmarks.values()
         move = next_move(pose, goal, self.p)
-        if move is None and not tag_based and searches < self.p.max_searches:
-            return search_move(pose, landmarks, self.p), True
+        if move is None and not tag_based and len(searched) < self.p.max_searches:
+            return search_move(pose, landmarks, self.p, searched)
         if move is None:
-            return None, False
-        return split_spin(pose, move, landmarks, self.p), False
+            return None, None
+        return split_spin(pose, move, landmarks, self.p), None
 
     def result(self, index, goal, reached, tag_based, iters, used, note=''):
         r = WaypointResult(index, goal, reached, tag_based, self.pose(), ekf.sigmas(self.P),
@@ -287,10 +294,10 @@ class Navigator:
         return r
 
     def run_goal(self, index, goal):
-        used, searches = set(), 0
+        used, searched = set(), set()
         for it in range(1, self.p.max_iters + 1):
             used.update(self.update_from_look(index))
-            move, is_search = self.choose_move(goal, bool(used), searches)
+            move, search_id = self.choose_move(goal, bool(used), searched)
             if move is None:
                 note = '' if used else 'no tag seen; reached by prediction only'
                 return self.result(index, goal, True, bool(used), it, used, note)
@@ -300,7 +307,8 @@ class Navigator:
             if self.act(index, move) is None:
                 return self.result(index, goal, False, bool(used), it, used,
                                    f'no calibrated level for {move}')
-            searches += is_search
+            if search_id is not None:
+                searched.add(search_id)
         return self.result(index, goal, False, bool(used), self.p.max_iters, used,
                            'max_iters reached')
 
