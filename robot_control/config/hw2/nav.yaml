@@ -1,0 +1,40 @@
+# HW2 stop-look-correct parameters. Angles in degrees here; code converts to rad.
+tolerance:
+  pos: 0.03             # m, waypoint reached when closer than this
+  ang_deg: 3.0
+
+levels:                 # command levels, fast -> slow (see step_timing.py)
+  drive: [0.3, 0.2]
+  spin: [0.35, 0.25]
+
+look:                   # one look = robot standing still, frames averaged
+  window_s: 1.0
+  min_count: 3
+  max_spread: 0.02      # m, reject a tag whose x/y std exceeds this
+  min_dist: 0.25
+  max_dist: 3.0
+  max_oblique_deg: 60.0
+
+control:
+  max_iters: 8          # looks per waypoint
+  max_searches: 2       # turns towards a tag when a waypoint had no tag update
+  align_min_deg: 3.0    # allowed heading error before driving, see stop_look.py
+  align_max_deg: 15.0
+
+ekf:
+  init_sigma: {xy: 0.01, theta_deg: 1.0}
+  motion:               # process noise per primitive
+    k_d: 0.02           # along-track std per m driven
+    c_d: 0.01           # m, along-track std per drive
+    k_lat: 0.03         # cross-track std per m driven
+    k_hd_deg: 2.0       # heading std per m driven
+    k_s: 0.05           # heading std per unit of spin angle
+    c_s_deg: 2.0        # heading std per spin
+  obs:                  # tag measurement noise; fit with hw2_probe stats
+    a: 0.005            # m, sigma_xy = a + b * d^2
+    b: 0.01
+    c_deg: 1.5          # sigma_psi = c + e * d
+    e_deg: 1.5          # per m
+    oblique_deg: 30.0   # beyond this obliquity sigma_psi is multiplied by oblique_factor
+    oblique_factor: 2.0
+  gate: 11.34           # chi-square 3 dof, 99 %
