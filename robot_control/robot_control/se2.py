@@ -23,6 +23,18 @@ def wrap_angle(a):
     return a
 
 
+def circular_mean(angles):
+    """Mean direction; correct across the ±pi seam (e.g. 179° and -179° -> 180°)."""
+    s = sum(math.sin(a) for a in angles)
+    c = sum(math.cos(a) for a in angles)
+    return math.atan2(s, c)
+
+
+def angle_between(ax, ay, bx, by):
+    """Unsigned angle between two 2D vectors, in [0, pi]."""
+    return abs(wrap_angle(math.atan2(by, bx) - math.atan2(ay, ax)))
+
+
 def to_parent(p, px, py):
     """Point given in frame p -> parent frame."""
     c, s = math.cos(p.theta), math.sin(p.theta)

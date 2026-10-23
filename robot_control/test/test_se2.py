@@ -3,7 +3,8 @@ import math
 import pytest
 
 from robot_control.se2 import (
-    Pose2, compose, inverse, quat_to_matrix, to_child, to_parent, wrap_angle, yaw_to_quat,
+    Pose2, angle_between, circular_mean, compose, inverse, quat_to_matrix, to_child,
+    to_parent, wrap_angle, yaw_to_quat,
 )
 
 
@@ -18,6 +19,18 @@ def test_wrap_angle_range():
     assert wrap_angle(3 * math.pi / 2) == pytest.approx(-math.pi / 2)
     assert wrap_angle(-7 * math.pi) == pytest.approx(math.pi)
     assert wrap_angle(0.1) == pytest.approx(0.1)
+
+
+def test_circular_mean_across_seam():
+    m = circular_mean([math.radians(179), math.radians(-179)])
+    assert abs(wrap_angle(m - math.pi)) < 1e-9
+    assert circular_mean([0.1, 0.3]) == pytest.approx(0.2)
+
+
+def test_angle_between():
+    assert angle_between(1, 0, 0, 1) == pytest.approx(math.pi / 2)
+    assert angle_between(0, 1, 1, 0) == pytest.approx(math.pi / 2)
+    assert angle_between(1, 0, -1, 0) == pytest.approx(math.pi)
 
 
 def test_to_parent_and_back():
