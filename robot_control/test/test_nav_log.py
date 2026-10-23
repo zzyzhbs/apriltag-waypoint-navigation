@@ -1,8 +1,10 @@
 import csv
 import math
+import os
 
 import numpy as np
 import pytest
+import yaml
 from sim_rover import SimRover
 from test_stop_look import GOALS, MAP, NOISE, P, make_calib
 
@@ -11,6 +13,7 @@ from robot_control.se2 import Pose2
 from robot_control.stop_look import Navigator, NavLog
 from robot_control.tag_obs import filter_window, make_obs
 
+LANDMARKS = os.path.join(os.path.dirname(__file__), '..', 'config', 'hw2', 'landmarks.yaml')
 LOOK = {'min_count': 3, 'max_spread': 0.02, 'min_dist': 0.25, 'max_dist': 3.0,
         'max_oblique_deg': 60.0}
 
@@ -59,9 +62,10 @@ class FakeClock:
         return self.t
 
 
-def test_csv_log_full_sim_run(tmp_path):
+def write_sim_run(tmp_path, seed=3):
+    """Simulated rover through all waypoints with a fake clock -> (dir, results, rover, t)."""
     clock = FakeClock()
-    rover = SimRover(MAP, Pose2(0, 0, 0), np.random.default_rng(3))
+    rover = SimRover(MAP, Pose2(0, 0, 0), np.random.default_rng(seed))
 
     def look():
         clock.t += 1.0
@@ -75,7 +79,10 @@ def test_csv_log_full_sim_run(tmp_path):
         clock.t += 1.0          # settle
         return t0, t1
 
-    log = CsvNavLog(str(tmp_path / 'run'), Pose2(0, 0, 0), (0.01, 0.01, 0.02), clock)
+    run_dir = str(tmp_path / 'run')
+    log = CsvNavLog(run_dir, Pose2(0, 0, 0), (0.01, 0.01, 0.02), clock)
+    with open(LANDMARKS) as f:
+        log.write_config({'map': yaml.safe_load(f)})
     seen = []
 
     class Spy(NavLog):
@@ -86,18 +93,22 @@ def test_csv_log_full_sim_run(tmp_path):
                     TeeLog(log, Spy()))
     results = nav.run(GOALS)
     log.close()
-
-    traj = read_csv(tmp_path / 'run' / 'trajectory.csv')
-    steps = read_csv(tmp_path / 'run' / 'steps.csv')
-    obs = read_csv(tmp_path / 'run' / 'observations.csv')
-    wps = read_csv(tmp_path / 'run' / 'waypoints.csv')
     assert seen == [1, 2, 3]
+    return run_dir, results, rover, clock.t - 100.0
+
+
+def test_csv_log_full_sim_run(tmp_path):
+    run_dir, results, rover, t_end = write_sim_run(tmp_path)
+    traj = read_csv(os.path.join(run_dir, 'trajectory.csv'))
+    steps = read_csv(os.path.join(run_dir, 'steps.csv'))
+    obs = read_csv(os.path.join(run_dir, 'observations.csv'))
+    wps = read_csv(os.path.join(run_dir, 'waypoints.csv'))
     assert len(steps) == len(rover.steps)
     assert [int(w['wp']) for w in wps] == [1, 2, 3] and all(w['reached'] == '1' for w in wps)
     assert any(o['accepted'] == '1' for o in obs)
     grid = [float(r['t']) for r in traj if r['source'] in ('hold', 'predict')]
     assert grid == pytest.approx([0.5 * k for k in range(len(grid))])
-    assert grid[-1] >= clock.t - 100.0 - 0.5
+    assert grid[-1] >= t_end - 0.5
     last = traj[-1]
     assert float(last['x']) == pytest.approx(results[-1].pose.x, abs=1e-3)
     assert float(last['y']) == pytest.approx(results[-1].pose.y, abs=1e-3)
