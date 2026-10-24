@@ -13,8 +13,8 @@ from robot_control.ol_planner import Step, load_waypoints
 from robot_control.se2 import Pose2, wrap_angle
 from robot_control.stop_look import (
     Move, NavigationHalt, Navigator, NavLog, align_tol, below_min_step, drive_length,
-    move_to_primitive,
-    next_move, params_from_config, search_move, split_spin, step_motion,
+    move_to_primitive, next_move, params_from_config, search_move, split_spin,
+    step_motion, to_step,
 )
 
 HERE = os.path.dirname(__file__)
@@ -44,6 +44,15 @@ def make_calib(tmp_path):
 
 
 # ---------- planning ----------
+
+def test_fine_spin_only_for_small_turns(tmp_path):
+    c = make_calib(tmp_path)
+    # Medium/large turns must not extrapolate the fine 0.25 fit.
+    assert to_step(Move('spin', math.radians(30.0)), c, P).cmd == 0.35
+    assert to_step(Move('spin', math.radians(39.38)), c, P).cmd == 0.35
+    # The fine level is still available for the last small correction.
+    assert to_step(Move('spin', math.radians(10.0)), c, P).cmd == 0.25
+
 
 def test_next_move_turn_drive_turn():
     goal = Pose2(1.0, 2.0, math.pi)

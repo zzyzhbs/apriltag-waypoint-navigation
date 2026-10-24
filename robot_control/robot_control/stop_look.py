@@ -26,6 +26,7 @@ class NavParams:
     view_dist: float        # m, tags farther than this are not expected to be seen
     view_half: float        # rad
     min_split: float        # rad
+    fine_max: float         # rad, largest spin allowed to use a fine level
     max_drive: float        # m
     undershoot_k: float
     undershoot_c: float     # m
@@ -45,6 +46,7 @@ def params_from_config(cfg):
         search_max_dist=float(c['search_max_dist']),
         max_oblique=r(lk['max_oblique_deg']), view_dist=float(lk['max_dist']),
         view_half=r(c['view_half_deg']), min_split=r(c['min_split_deg']),
+        fine_max=r(c['fine_max_deg']),
         max_drive=float(c['max_drive']), undershoot_k=float(c['undershoot_k']),
         undershoot_c=float(c['undershoot_c']), undershoot_min=float(c['undershoot_min']),
         drive_levels=tuple(lv['drive']), spin_levels=tuple(lv['spin']))
@@ -164,6 +166,11 @@ def move_to_primitive(move):
 def to_step(move, calib, p):
     kind, direction, amount = move_to_primitive(move)
     levels = p.drive_levels if kind == 'drive' else p.spin_levels
+    # The fine spin level is calibrated only for short pulses.  Extrapolating
+    # it to medium turns produced e.g. 39 deg at cmd 0.25 with T=2.05 s and a
+    # clear overshoot; keep it for the last small correction only.
+    if kind == 'spin' and abs(move.value) > p.fine_max and len(levels) > 1:
+        levels = levels[:1]
     return pick_level(calib, kind, direction, amount, levels)
 
 
