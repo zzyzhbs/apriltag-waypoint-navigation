@@ -11,6 +11,7 @@ drive:
 spin:
   ccw:
     time_scale: 0.83
+    min_T: {0.25: 0.1}
     trials:
     - {cmd: 0.35, T: 1.2, angle: 135.0, time: '2026-10-15T05:51:31'}
     - {cmd: 0.35, T: 0.4, angle: 47.0, time: '2026-10-15T05:55:03'}
@@ -20,10 +21,24 @@ spin:
     - {cmd: 0.35, T: 1.6, angle: 195.0, time: '2026-10-15T05:58:57'}
     - {cmd: 0.35, T: 0.8, angle: 98.0, time: '2026-10-15T05:59:24'}
     - {cmd: 0.35, T: 0.4, angle: 44.0, time: '2026-10-15T06:01:09'}
+    - {cmd: 0.25, T: 0.1, angle: 3.0, time: '2026-10-24T05:05:57'}
+    - {cmd: 0.25, T: 0.6, angle: 7.0, time: '2026-10-24T05:06:08'}
+    - {cmd: 0.25, T: 0.1, angle: 2.0, time: '2026-10-24T05:06:49'}
+    - {cmd: 0.25, T: 0.1, angle: 2.0, time: '2026-10-24T05:07:11'}
+    - {cmd: 0.25, T: 0.3, angle: 7.0, time: '2026-10-24T05:07:19'}
+    - {cmd: 0.25, T: 0.3, angle: 6.0, time: '2026-10-24T05:07:27'}
+    - {cmd: 0.25, T: 0.2, angle: 4.0, time: '2026-10-24T05:07:45'}
+    - {cmd: 0.25, T: 0.3, angle: 5.0, time: '2026-10-24T05:07:50'}
+    - {cmd: 0.25, T: 0.2, angle: 3.0, time: '2026-10-24T05:08:07'}
+    - {cmd: 0.25, T: 0.6, angle: 11.0, time: '2026-10-24T05:08:21'}
+    - {cmd: 0.25, T: 0.4, angle: 8.0, time: '2026-10-24T05:08:25'}
+    - {cmd: 0.25, T: 0.4, angle: 9.0, time: '2026-10-24T05:08:33'}
+    - {cmd: 0.25, T: 0.4, angle: 9.0, time: '2026-10-24T05:08:37'}
+    - {cmd: 0.25, T: 0.6, angle: 11.0, time: '2026-10-24T05:08:43'}
+    - {cmd: 0.25, T: 0.2, angle: 5.0, time: '2026-10-24T05:08:53'}
   cw:
-    # Recalibrated from run_20261024_035816: CW actual rate ~1.3x the fit,
-    # so shorten every CW command to 0.77x its fitted duration.
     time_scale: 0.77
+    min_T: {0.25: 0.1}
     trials:
     - {cmd: 0.35, T: 1.6, angle: 202.0, time: '2026-10-15T05:50:45'}
     - {cmd: 0.35, T: 0.4, angle: 53.0, time: '2026-10-15T05:51:59'}
@@ -33,6 +48,21 @@ spin:
     - {cmd: 0.35, T: 1.2, angle: 155.0, time: '2026-10-15T05:59:57'}
     - {cmd: 0.35, T: 0.8, angle: 104.0, time: '2026-10-15T06:00:25'}
     - {cmd: 0.35, T: 1.6, angle: 212.0, time: '2026-10-15T06:01:43'}
+    - {cmd: 0.25, T: 0.2, angle: 7.0, time: '2026-10-24T05:06:15'}
+    - {cmd: 0.25, T: 0.4, angle: 20.0, time: '2026-10-24T05:06:21'}
+    - {cmd: 0.25, T: 0.3, angle: 8.0, time: '2026-10-24T05:06:31'}
+    - {cmd: 0.25, T: 0.1, angle: 2.0, time: '2026-10-24T05:06:38'}
+    - {cmd: 0.25, T: 0.3, angle: 11.0, time: '2026-10-24T05:06:42'}
+    - {cmd: 0.25, T: 0.4, angle: 10.0, time: '2026-10-24T05:06:57'}
+    - {cmd: 0.25, T: 0.2, angle: 6.0, time: '2026-10-24T05:07:15'}
+    - {cmd: 0.25, T: 0.4, angle: 13.0, time: '2026-10-24T05:07:23'}
+    - {cmd: 0.25, T: 0.2, angle: 6.0, time: '2026-10-24T05:07:36'}
+    - {cmd: 0.25, T: 0.6, angle: 14.0, time: '2026-10-24T05:08:14'}
+    - {cmd: 0.25, T: 0.3, angle: 10.0, time: '2026-10-24T05:08:30'}
+    - {cmd: 0.25, T: 0.6, angle: 21.0, time: '2026-10-24T05:08:50'}
+    - {cmd: 0.25, T: 0.1, angle: 4.0, time: '2026-10-24T05:09:00'}
+    - {cmd: 0.25, T: 0.6, angle: 13.0, time: '2026-10-24T05:09:07'}
+    - {cmd: 0.25, T: 0.1, angle: 2.0, time: '2026-10-24T05:09:11'}
 verify:
 - {kind: drive, dir: fwd, target: 1.0, cmd: 0.3, T: 2.587, trim: 0.0, x: 0.995, y: 0.016,
   time: '2026-10-15T06:04:58'}
@@ -44,15 +74,19 @@ verify:
   time: '2026-10-15T06:07:25'}
 - {kind: spin, dir: ccw, target: 180.0, cmd: 0.35, T: 1.487, trim: 0.0, angle: 176.0,
   time: '2026-10-15T06:08:02'}
-updated: '2026-10-15'
+updated: '2026-10-24'
 fit:
   drive:
     0.3: {rate: 0.3958, offset: -0.0242, rms: 0.0123, n: 6, n_durations: 3, t_min: 2.0,
       t_max: 4.0}
   spin:
     ccw:
+      0.25: {rate: 15.4505, offset: 1.1892, rms: 1.2581, n: 15, n_durations: 5, t_min: 0.1,
+        t_max: 0.6}
       0.35: {rate: 125.125, offset: -6.0, rms: 4.4279, n: 8, n_durations: 4, t_min: 0.4,
         t_max: 1.6}
     cw:
+      0.25: {rate: 27.6126, offset: 0.964, rms: 2.8968, n: 15, n_durations: 5, t_min: 0.1,
+        t_max: 0.6}
       0.35: {rate: 131.0, offset: -1.5, rms: 5.8779, n: 8, n_durations: 4, t_min: 0.4,
         t_max: 1.6}
