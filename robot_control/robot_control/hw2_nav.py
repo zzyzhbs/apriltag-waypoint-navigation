@@ -1,7 +1,7 @@
 """HW2 closed-loop waypoint runner (stop-look-correct).
 Needs hw2_perception_launch.py and motor_control running (or use hw2_launch.py).
 
-ros2 run robot_control hw2_nav --ros-args -p floor:=study_wood2 [-p dry_run:=true]
+ros2 run robot_control hw2_nav --ros-args -p floor:=study_wood2_hw2_ext [-p dry_run:=true]
 
 dry_run: never moves; looks a few times and prints the estimate and the planned
 first step, to check tags, map and calibration before a real run.
@@ -82,7 +82,7 @@ class PosePublisher(NavLog):
 class Hw2NavNode(ol_node.MotorNode):
     def __init__(self):
         super().__init__('hw2_nav')
-        self.floor = self.param('floor', 'study_wood2')
+        self.floor = self.param('floor', 'study_wood2_hw2_ext')
         self.paths = {
             'calib_dir': os.path.expanduser(self.param('calib_dir', DEFAULT_CALIB_DIR)),
             'waypoints': os.path.expanduser(self.param('waypoints', DEFAULT_WAYPOINTS)),
