@@ -27,6 +27,7 @@ control:
   undershoot_c: 0.08    #   around (no reverse), undershooting only a short drive forward
   undershoot_min: 0.3   # m, no undershoot below this distance
   min_split_deg: 15.0   # split a turn that loses all tags only if the first part is this big
+  fine_max_deg: 20.0    # only spins <= this may use fine (slow) levels; larger use coarse
 
 ekf:
   init_sigma: {xy: 0.01, theta_deg: 1.0}

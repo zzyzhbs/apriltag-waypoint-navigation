@@ -1,6 +1,6 @@
 """HW2 full run: perception + motor_control + hw2_nav.
 
-ros2 launch robot_control hw2_launch.py [floor:=study_wood2] [dry_run:=true] [tag_z_sign:=1]
+ros2 launch robot_control hw2_launch.py [floor:=study_wood2_hw2_ext] [dry_run:=true] [tag_z_sign:=1]
 """
 from launch import LaunchDescription
 from launch.actions import (
@@ -15,7 +15,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     args = [
-        DeclareLaunchArgument('floor', default_value='study_wood2'),
+        DeclareLaunchArgument('floor', default_value='study_wood2_hw2_ext'),
         DeclareLaunchArgument('dry_run', default_value='false'),
         DeclareLaunchArgument('tag_z_sign', default_value='1'),
     ]

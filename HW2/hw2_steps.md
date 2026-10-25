@@ -11,7 +11,7 @@ waypoint is within 3 cm / 3°.
 | `robot_control/config/hw2/landmarks.yaml` | tag map (world frame); edit after measuring |
 | `robot_control/config/hw2/apriltag.yaml` | apriltag node parameters (ids 0/1/2, size 0.166) |
 | `robot_control/config/hw2/nav.yaml` | tolerances, command levels, look window, EKF noise |
-| `robot_control/config/open_loop/study_wood2.yaml` | primitive calibration (HW1 + fine levels) |
+| `robot_control/config/open_loop/study_wood2_hw2_ext.yaml` | primitive calibration (HW1 + fine levels) |
 | `robot_control/launch/hw2_perception_launch.py` | camera (rectified) + apriltag + `base_link → camera_frame` TF |
 | `robot_control/launch/hw2_launch.py` | perception + `motor_control` + `hw2_nav` |
 | `HW2/logs/run_<time>/` | one folder per run (trajectory, steps, observations, waypoints) |
@@ -122,7 +122,7 @@ ros2 run robot_control motor_control
 Terminal 2:
 ```bash
 source ~/ros2_ws/install/setup.bash
-C="ros2 run robot_control ol_calibrate --ros-args -p floor:=study_wood2"
+C="ros2 run robot_control ol_calibrate --ros-args -p floor:=study_wood2_hw2_ext"
 $C -p mode:=drive -p cmds:="[0.2]" -p durations:="[0.2, 0.4, 0.6]" -p repeats:=2
 $C -p mode:=spin -p dir:=both -p cmds:="[0.25]" -p durations:="[0.2, 0.4, 0.6]" -p repeats:=2
 $C -p mode:=fit
@@ -133,7 +133,7 @@ First check that 0.2 / 0.25 actually move the robot (above the dead band); if no
 values and put them into `nav.yaml` `levels:` (fast → slow).
 
 Goal: the smallest move (the fit at T = 0.2 s) ≤ 3 cm and ≤ 3°. If it is larger, allow a
-shorter minimum run for that level in `study_wood2.yaml`, e.g. under `spin: ccw:` and `cw:`
+shorter minimum run for that level in `study_wood2_hw2_ext.yaml`, e.g. under `spin: ccw:` and `cw:`
 add `min_T: {0.25: 0.1}` (seconds).
 
 Check on the Mac what the planner will pick:
@@ -142,7 +142,7 @@ cd robot_control
 python -c "
 from robot_control.ol_model import Calibration
 from robot_control.step_timing import pick_level, min_step
-c = Calibration.load('config/open_loop/study_wood2.yaml')
+c = Calibration.load('config/open_loop/study_wood2_hw2_ext.yaml')
 print(min_step(c, 'drive', 'fwd', (0.3, 0.2)), min_step(c, 'spin', 'ccw', (0.35, 0.25)))
 print(pick_level(c, 'spin', 'ccw', 5.0, (0.35, 0.25)).describe())"
 ```
@@ -161,7 +161,7 @@ ros2 launch robot_control hw2_launch.py dry_run:=true
 # run
 ros2 launch robot_control hw2_launch.py
 ```
-Arguments: `floor:=study_wood2` (default), `tag_z_sign:=1`, `dry_run:=false`.
+Arguments: `floor:=study_wood2_hw2_ext` (default), `tag_z_sign:=1`, `dry_run:=false`.
 Everything shuts down when `hw2_nav` finishes. Afterwards run `pgrep -af robot_vision_camera_node`.
 
 **Or three terminals** (easier to restart only the runner):
@@ -171,8 +171,8 @@ ros2 launch robot_control hw2_perception_launch.py
 # T2
 ros2 run robot_control motor_control
 # T3
-ros2 run robot_control hw2_nav --ros-args -p floor:=study_wood2 -p dry_run:=true
-ros2 run robot_control hw2_nav --ros-args -p floor:=study_wood2
+ros2 run robot_control hw2_nav --ros-args -p floor:=study_wood2_hw2_ext -p dry_run:=true
+ros2 run robot_control hw2_nav --ros-args -p floor:=study_wood2_hw2_ext
 ```
 
 What it prints:
