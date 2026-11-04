@@ -1,0 +1,43 @@
+=== battery probe (start) ===
+battery_probe start: turn(d30)= +79.6 deg, gz_int=+116.3
+=== E3 dead zone (one-sided pivot, longer) ===
+dead_zone left c=0.06 -> -1.2 deg
+dead_zone left c=0.08 -> -1.9 deg
+dead_zone left c=0.10 -> +3.5 deg
+dead_zone left c=0.12 -> +0.3 deg
+dead_zone left c=0.15 -> +0.7 deg
+dead_zone right c=0.06 -> -0.2 deg
+dead_zone right c=0.08 -> +0.7 deg
+dead_zone right c=0.10 -> -0.8 deg
+dead_zone right c=0.12 -> -1.5 deg
+dead_zone right c=0.15 -> -0.5 deg
+=== E1/E2 turn-rate calibration (long durations) ===
+ccw c=0.05 T=12.0s: d05=  -2.8 d15=  -0.3 d30=  -1.1 omega=   -0.1 deg/s | gz_int=   +7.8
+cw c=0.05 T=12.0s: d05=  -1.0 d15=  -1.7 d30=  -1.6 omega=   -0.1 deg/s | gz_int=  -17.6
+ccw c=0.05 T=12.0s: d05=  +3.6 d15=  +2.1 d30=  +2.7 omega=   +0.2 deg/s | gz_int=   -5.8
+cw c=0.05 T=12.0s: d05=  -1.0 d15=  -0.3 d30=  -0.1 omega=   -0.0 deg/s | gz_int=   +1.2
+ccw c=0.10 T= 8.0s: d05=  +0.5 d15=  +1.0 d30=  -0.5 omega=   -0.1 deg/s | gz_int=   +7.0
+cw c=0.10 T= 8.0s: d05=  +1.3 d15=  -1.2 d30=  -0.9 omega=   -0.1 deg/s | gz_int=  +38.9
+ccw c=0.10 T= 8.0s: d05=  +2.8 d15=  -0.6 d30=  +2.9 omega=   +0.4 deg/s | gz_int=   +4.9
+cw c=0.10 T= 8.0s: d05=  -1.5 d15=  -0.5 d30=  -0.6 omega=   -0.1 deg/s | gz_int=  +14.5
+ccw c=0.15 T= 5.0s: d05=  +0.7 d15=  +2.1 d30=  +2.9 omega=   +0.6 deg/s | gz_int=  +12.2
+cw c=0.15 T= 5.0s: d05=  -5.4 d15=  -6.0 d30=  -2.8 omega=   -0.6 deg/s | gz_int=   -5.7
+ccw c=0.15 T= 5.0s: d05=  +2.0 d15=  +2.9 d30=  +1.8 omega=   +0.4 deg/s | gz_int=   +6.3
+cw c=0.15 T= 5.0s: d05=  -3.1 d15=  -3.8 d30=  -2.9 omega=   -0.6 deg/s | gz_int=  -18.7
+ccw c=0.20 T= 3.0s: d05=  +4.2 d15=  +2.1 d30=  +3.9 omega=   +1.3 deg/s | gz_int=   -3.7
+cw c=0.20 T= 3.0s: d05= -13.2 d15=  -3.2 d30=  -3.2 omega=   -1.1 deg/s | gz_int=   -3.7
+ccw c=0.20 T= 3.0s: d05=  +8.9 d15=  +7.2 d30=  +0.5 omega=   +0.2 deg/s | gz_int=  +13.9
+cw c=0.20 T= 3.0s: d05=  -5.4 d15=  -2.9 d30=  -0.6 omega=   -0.2 deg/s | gz_int=   -6.7
+ccw c=0.30 T= 1.0s: d05= +44.6 d15= +66.7 d30= +67.6 omega=  +67.6 deg/s | gz_int=  +67.1
+cw c=0.30 T= 1.0s: d05= -70.0 d15= -94.3 d30= -91.7 omega=  -91.7 deg/s | gz_int=  -59.7
+ccw c=0.30 T= 1.0s: d05= +59.7 d15= +81.6 d30= +79.1 omega=  +79.1 deg/s | gz_int=  +65.1
+cw c=0.30 T= 1.0s: d05= -71.5 d15= -97.1 d30= -97.4 omega=  -97.4 deg/s | gz_int=  -94.1
+ccw c=0.40 T= 0.5s: d05= +19.1 d15= +86.7 d30= +85.4 omega= +170.7 deg/s | gz_int=   +3.9
+cw c=0.40 T= 0.5s: d05=  +1.3 d15= -88.9 d30= -90.1 omega= -180.3 deg/s | gz_int=   -1.6
+ccw c=0.40 T= 0.5s: d05=  -0.4 d15=  +6.2 d30= +92.1 omega= +184.1 deg/s | gz_int=   +8.5
+cw c=0.40 T= 0.5s: d05=  +0.2 d15=  -4.2 d30= -97.5 omega= -194.9 deg/s | gz_int=  -44.9
+=== battery probe (end) ===
+battery_probe end: turn(d30)= +79.1 deg, gz_int=+139.3
+DONE (motors stopped)
+
+[exited with code 0]

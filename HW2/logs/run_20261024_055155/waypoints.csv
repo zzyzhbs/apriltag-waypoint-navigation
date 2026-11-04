@@ -1,0 +1,4 @@
+t,wp,goal_x,goal_y,goal_theta_deg,reached,tag_based,x,y,theta_deg,sx,sy,stheta_deg,iters,tags,note
+18.53,1,1.0000,0.0000,0.00,1,1,0.9905,-0.0097,3.22,0.0055,0.0143,1.64,6,0,remaining spin is below the smallest step
+44.62,2,1.0000,2.0000,180.00,1,1,1.0000,2.0000,180.00,0.0419,0.0679,6.99,9,0 1,
+71.73,3,0.0000,0.0000,0.00,0,1,-0.0106,-0.0108,26.60,0.0155,0.0149,1.08,9,0 1 2,"no calibrated level for Move(kind='spin', value=-0.4643363840410411)"

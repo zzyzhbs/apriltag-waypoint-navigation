@@ -1,0 +1,4 @@
+t,wp,goal_x,goal_y,goal_theta_deg,reached,tag_based,x,y,theta_deg,sx,sy,stheta_deg,iters,tags,note
+8.48,1,1.0000,0.0000,0.00,1,1,0.9802,-0.0327,-0.78,0.0077,0.0145,1.26,2,0,
+29.68,2,1.0000,2.0000,180.00,1,1,1.0000,2.0000,163.20,0.0214,0.0103,4.05,7,0 1,remaining spin is below the smallest step
+54.15,3,0.0000,0.0000,0.00,1,1,-0.0171,-0.0117,-23.44,0.0199,0.0124,0.77,8,0 2,remaining spin is below the smallest step

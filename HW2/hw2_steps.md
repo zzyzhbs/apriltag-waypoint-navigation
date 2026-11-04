@@ -1,5 +1,9 @@
 # HW2: closed-loop waypoint demo with AprilTags (stop-look-correct)
 
+> This is the runbook used on the robot. The code expects the checkout at `~/ros2_ws/src/CSE276A`, so
+> clone this repository to that path. Commands below that name the `HW2` branch refer to the original
+> working repository; use `main` here.
+
 Branch `HW2`. Waypoints (0,0,0) → (1,0,0) → (1,2,π) → (0,0,0).
 After every primitive the robot is still: it looks at the tags, corrects its pose
 estimate (EKF), re-plans the next primitive, executes it, and repeats until each
