@@ -9,7 +9,7 @@ pose below is a filter estimate.
 Estimated robot position for the 7 of 24 runs whose `waypoints.csv` has `reached = 1` at all three
 waypoints. Discontinuities are EKF updates from tag looks taken while the robot was stopped. In
 `run_20261023_071302` the navigator flagged WP2 reached with the estimate 198.5 cm from the goal.
-Commit  (`fix mistaken complete`) changed that logic five minutes after the run, going by the
+Commit 9f444fd (`fix mistaken complete`) changed that logic five minutes after the run, going by the
 robot clock (inference).
 
 ## `waypoint_residuals.png`

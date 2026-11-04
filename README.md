@@ -79,7 +79,7 @@ These counts do not show that calibration raised the completion rate. The sample
 
 | Run | WP1 | WP2 | WP3 | Note |
 |---|---|---|---|---|
-| `run_20261023_071302` | 3.8 cm, −25.1° | 198.5 cm, −87.3° | 1.9 cm, 0.0°\* | WP2 flagged in error; logic fixed in  |
+| `run_20261023_071302` | 3.8 cm, −25.1° | 198.5 cm, −87.3° | 1.9 cm, 0.0°\* | WP2 flagged in error; logic fixed in 9f444fd |
 | `run_20261023_072308` | 1.4 cm, −0.5° | 0.0 cm, +14.2°\* | 0.0 cm, 0.0°\* | WP2 turn below the coarse minimum |
 | `run_20261024_035816` | 2.7 cm, −0.1° | 0.0 cm, 0.0°\* | 0.0 cm, 0.0°\* | |
 | `run_20261024_044445` | 1.2 cm, +1.0° | 0.0 cm, 0.0°\* | 11.7 cm, −131.9° | WP3 turn split to below the coarse minimum (reconstructed) |
@@ -123,7 +123,7 @@ The first navigator runs could not make small heading corrections, because the s
 | Spin CW | 24.70° | 4.55° |
 | Drive | 0.055 m | 0.055 m (fine level not calibrated) |
 
-The fine level introduced a new failure. Extrapolated past its calibrated range, it was commanded for up to 39.4° at T = 2.05 s, and that turn overshot; the code comment records this, but the size of the overshoot was not logged. The log shows 5 such spins. The `fine_max_deg` gate () now limits the fine level to turns of 20° or less.
+The fine level introduced a new failure. Extrapolated past its calibrated range, it was commanded for up to 39.4° at T = 2.05 s, and that turn overshot; the code comment records this, but the size of the overshoot was not logged. The log shows 5 such spins. The `fine_max_deg` gate (800661d) now limits the fine level to turns of 20° or less.
 
 The gate leaves a gap. Turns above 20° must use the coarse level, whose minimum is 24.15° CCW and 32.53° CW, so turns between those limits have no executable level. Two of the 8 runs after the gate stopped there, at −21.1° and −26.6°.
 
@@ -226,4 +226,4 @@ Project code is under the [MIT License](LICENSE). `apriltag_ros/` and `robot_vis
 
 ## 中文摘要
 
-本项目是 UCSD CSE 276A 的双人课程项目：小车在 Rubik Pi 3 与 ROS 2 Jazzy 上，靠停车时观测 AprilTag 修正 SE(2) 扩展卡尔曼滤波的位姿估计，依次到达三个航点。24 次实车运行中有 7 次标记全部到达，最佳运行的估计残差为 3.1、3.3、5.1 cm，未达 3 cm 目标。所有位姿都是滤波估计，没有外部真值。细级标定把最小转角降到 3.05° 和 4.55°，同时留下了一段无可用档位的转角。
+UCSD CSE 276A 的双人课程项目：小车运行 ROS 2 Jazzy，停车观测 AprilTag，修正 SE(2) 扩展卡尔曼滤波的位姿估计，依次到达三个航点。24 次实车运行中 7 次标记全部到达，最佳运行估计残差为 3.1、3.3、5.1 cm，未达 3 cm 目标。所有位姿都是滤波估计，没有外部真值。细级标定把最小转角降到 3.05° 和 4.55°，也留下一段无可用档位的转角。
