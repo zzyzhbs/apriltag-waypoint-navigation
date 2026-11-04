@@ -272,11 +272,16 @@ def dot_handle(color, label, hollow=False, marker='o', size=6.5):
 
 # ---------- figures ----------
 
-def figure_trajectories(runs, out_dir):
+def figure_trajectories(runs, out_dir, wide=False):
+    """Portrait version, or with wide=True a landscape one with the legend beside the map."""
     complete = [r for r in runs if is_complete(r)]
     others = [r for r in complete if r['name'] not in (BEST_RUN, FALSE_COMPLETION_RUN)]
-    fig, ax = plt.subplots(figsize=(6.5, 8.5))
-    fig.subplots_adjust(left=0.1, right=0.97, top=0.895, bottom=0.07)
+    fig, ax = plt.subplots(figsize=(7.8, 6.1) if wide else (6.5, 8.5))
+    if wide:
+        fig.subplots_adjust(left=0.095, right=0.575, top=0.855, bottom=0.085)
+        ax.set_anchor('W')
+    else:
+        fig.subplots_adjust(left=0.1, right=0.97, top=0.895, bottom=0.07)
 
     def line(run, **kw):
         xs = [float(r['x']) for r in run['trajectory']]
@@ -304,7 +309,7 @@ def figure_trajectories(runs, out_dir):
     for lm in best_run['config']['map']['landmarks']:
         ax.scatter([lm['x']], [lm['y']], s=70, marker='s', color=INK2, zorder=6)
         arrow(ax, lm['x'], lm['y'], lm['yaw_deg'], 0.2, INK2)
-        offset = (9, 7) if lm['id'] != 2 else (-34, -15)
+        offset = (9, 7) if lm['id'] != 2 else (11, -13)
         ax.annotate(f'tag {lm["id"]}', (lm['x'], lm['y']), textcoords='offset points',
                     xytext=offset, color=INK2)
     ax.set_aspect('equal')
@@ -320,13 +325,14 @@ def figure_trajectories(runs, out_dir):
         mlines.Line2D([], [], color=ORANGE, lw=1.5, label=f'{FALSE_COMPLETION_RUN}\nWP2 flagged '
                       'reached 198.5 cm\nfrom the goal (logic fixed after this run)'),
     ]
-    ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(0.0, 1.0), labelcolor=INK2,
+    anchor = (1.05, 1.0) if wide else (0.0, 1.0)
+    ax.legend(handles=handles, loc='upper left', bbox_to_anchor=anchor, labelcolor=INK2,
               handlelength=1.8, labelspacing=0.9, borderaxespad=0.2)
     headline(fig, f'Estimated paths of the {len(complete)} runs flagged complete',
              'All three waypoints have reached = 1 in waypoints.csv. EKF estimates, world frame;\n'
              'jumps are tag updates. No external ground truth was recorded.',
              x=0.04, y=0.985)
-    return save(fig, out_dir, 'trajectories.png')
+    return save(fig, out_dir, 'trajectories_wide.png' if wide else 'trajectories.png')
 
 
 def figure_residuals(runs, out_dir):
@@ -715,6 +721,7 @@ def main():
     set_style()
     written = [
         figure_trajectories(runs, a.out),
+        figure_trajectories(runs, a.out, wide=True),
         figure_residuals(runs, a.out),
         figure_observations(runs, a.out),
         figure_calibration(runs, calib, nav_cfg, a.out),

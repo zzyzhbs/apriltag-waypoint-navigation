@@ -2,21 +2,21 @@
 
 A rover with timed motor commands and no odometry or IMU input drives through three waypoints, correcting its pose estimate only from AprilTag observations taken while it is stopped.
 
-**Status.** Course project for CSE 276A (Introduction to Robotics), UC San Diego, fall 2026, with two authors. Across 24 logged on-robot runs, 7 flagged all three waypoints reached. The best run ended with estimated residuals of 3.1, 3.3 and 5.1 cm, which misses the 3 cm target. All poses are filter estimates: no external ground truth was recorded.
+**Status.** Course project, UCSD CSE 276A, fall 2026, two authors. All pose numbers are filter estimates; no external ground truth was recorded.
 
 <p align="center">
-  <img src="docs/figures/trajectories.png" width="520" alt="Estimated paths of seven runs through three waypoints, with three AprilTags. The best run is highlighted. One run stops short of the second waypoint.">
+  <img src="docs/figures/trajectories_wide.png" width="680" alt="Estimated paths of seven runs through three waypoints, with three AprilTags. The best run is highlighted. One run stops short of the second waypoint.">
 </p>
 
 **Figure 1.** Estimated robot position for the 7 runs flagged complete. Discontinuities are EKF updates from tag looks. In `run_20261023_071302`, WP2 was flagged reached 198.5 cm from the goal. [Demo video](https://www.youtube.com/shorts/DX3TtBoyumA).
 
 ## Overview
 
-The route is fixed by the assignment: start at (0, 0, 0°), then visit (1, 0, 0°), (1, 2, 180°) and (0, 0, 0°), in metres and degrees. A Rubik Pi 3 [6] runs ROS 2 Jazzy [5] on a rover base with an OV5647 camera. Three AprilTag 36h11 markers [1, 2], 16.6 cm wide, stand at hand-measured positions. The camera and AprilTag nodes are provided by the course [7, 9]. This project adds intrinsic camera calibration, primitive calibration, an SE(2) extended Kalman filter, a waypoint navigator, run logging and a simulated rover. Between tag looks the navigator knows only the nominal length of each motion primitive.
+The route is fixed by the assignment: start at (0, 0, 0°), then visit (1, 0, 0°), (1, 2, 180°) and (0, 0, 0°), in metres and degrees. A Rubik Pi 3 [6] runs ROS 2 Jazzy [5] on a rover base with an OV5647 camera. Three AprilTag 36h11 markers [1, 2], 16.6 cm wide, stand at hand-measured positions (`landmarks.yaml`). The camera and AprilTag nodes are provided by the course [7, 9]. This project adds intrinsic camera calibration, primitive calibration, an SE(2) extended Kalman filter, a waypoint navigator, run logging and a simulated rover. Between tag looks the navigator knows only the nominal length of each motion primitive.
 
 ## Method
 
-Each motion is an open-loop primitive: a fixed wheel command held for a calibrated duration. After every primitive the robot settles for 1 s and collects tag detections for 1 s. It then applies an EKF update for each accepted tag and plans the next primitive from the new estimate. [`docs/method.md`](docs/method.md) has the Jacobians, control rules and parameter table.
+Each motion is an open-loop primitive: a fixed wheel command held for a calibrated duration. After every primitive the robot settles for 1 s and collects tag detections for 1 s. It then applies an EKF update for each accepted tag and plans the next primitive from the new estimate. Parameter values below come from `robot_control/config/hw2/nav.yaml`, and [`docs/method.md`](docs/method.md) has the Jacobians, control rules and parameter table.
 
 ### Motion model
 
@@ -56,7 +56,9 @@ The planner turns toward the goal, drives, then turns to the goal heading, with 
 
 ## Results
 
-Two points affect how to read these numbers:
+The best run ended with estimated residuals of 3.1, 3.3 and 5.1 cm at the three waypoints, against a 3 cm target (`HW2/logs/run_20261024_055456/waypoints.csv`).
+
+Two points affect how to read this and the tables below:
 
 - **A residual is the filter estimate minus the goal.** It shows where the filter believes the robot stopped, not where the robot actually stopped.
 - **`reached = 1` does not mean the target was met.** The flag is also set when the remaining move is below the smallest step (`stop_look.py`, `run_goal`).
@@ -87,7 +89,9 @@ These counts do not show that calibration raised the completion rate. The sample
 | `run_20261024_045200` | 3.8 cm, −0.8° | 0.0 cm, −16.8°\* | 2.1 cm, −23.4° | Turns below the coarse minimum |
 | `run_20261024_055456` | 3.1 cm, +0.5° | 3.3 cm, 0.0°\* | 5.1 cm, +0.5° | Only complete run after fine calibration |
 
-In the last run, the commanded motion was 4.924 m and 506.2° over 16 primitives, in 59.5 s with 16.8 s of movement. The commanded distance is below the 5.236 m geometric path because tag updates moved the estimate without a commanded drive. The estimated path length is 5.562 m.
+In the best run, the commanded motion was 4.924 m and 506.2° over 16 primitives, in 59.5 s with 16.8 s of movement (`steps.csv`). The commanded distance is below the 5.236 m geometric path because tag updates moved the estimate without a commanded drive. The estimated path length is 5.562 m.
+
+Figure 2 plots Table 2 with the filter's uncertainty. Because `reached` only records that the navigator stopped working on a waypoint, a flagged waypoint can still sit far from the goal, as the 198.5 cm point shows.
 
 <p align="center">
   <img src="docs/figures/waypoint_residuals.png" width="760" alt="Position and heading residuals at each waypoint for seven runs, with filter one-sigma bars. Hollow markers show waypoints with no tag update after the last primitive.">
@@ -95,7 +99,7 @@ In the last run, the commanded motion was 4.924 m and 506.2° over 16 primitives
 
 **Figure 2.** Waypoint residuals with the filter's 1σ, n = 7 per waypoint. Shaded bands are configured targets, not achieved values.
 
-Across all runs, 184 tag observations were logged: 142 accepted and 42 rejected (28 by the gate, 10 with too few frames, 3 out of range, 1 unstable). Half of the gate rejections came from the first look at the start pose, and 22 of the 28 were tag 0. No observation reached the 60° obliquity limit; the largest logged value is 39.9°.
+Across all 24 runs, `observations.csv` holds 184 tag observations: 142 accepted and 42 rejected (28 by the gate, 10 with too few frames, 3 out of range, 1 unstable). Half of the gate rejections came from the first look at the start pose, and 22 of the 28 were tag 0. No observation reached the 60° obliquity limit; the largest logged value is 39.9°.
 
 <p align="center">
   <img src="docs/figures/observations.png" width="680" alt="Scatter of tag distance against viewing obliquity, marking accepted observations, chi-square rejections and out-of-range rejections.">
@@ -105,7 +109,7 @@ Across all runs, 184 tag observations were logged: 142 accepted and 42 rejected 
 
 ## Calibration
 
-Primitives are calibrated from hand-measured trials (`study_wood2_hw2_ext.yaml`). A hand-measured check of the open-loop primitives gave these results, taken before the fine level was added:
+Primitives are calibrated from hand-measured trials (`study_wood2_hw2_ext.yaml`). The `verify` section of that file holds a hand-measured check of the open-loop primitives, taken before the fine level was added:
 
 | Primitive | Target | Measured |
 |---|---:|---:|
@@ -117,15 +121,15 @@ Primitives are calibrated from hand-measured trials (`study_wood2_hw2_ext.yaml`)
 
 The first navigator runs could not make small heading corrections, because the smallest coarse spin was over 24°. A fine level at cmd 0.25 was added, calibrated from 30 trials at 0.1 to 0.6 s:
 
-| Smallest executable step | Before | After |
+| Smallest executable step | Coarse level | Fine level, cmd 0.25 |
 |---|---:|---:|
 | Spin CCW | 24.15° | 3.05° |
-| Spin CW | 24.70° | 4.55° |
-| Drive | 0.055 m | 0.055 m (fine level not calibrated) |
+| Spin CW | 32.53° | 4.55° |
+| Drive | 0.055 m | not calibrated |
 
-The fine level introduced a new failure. Extrapolated past its calibrated range, it was commanded for up to 39.4° at T = 2.05 s, and that turn overshot; the code comment records this, but the size of the overshoot was not logged. The log shows 5 such spins. The `fine_max_deg` gate (800661d) now limits the fine level to turns of 20° or less.
+The CW coarse minimum was 24.70° until the CW `time_scale` of 0.77 was added (`study_wood2.yaml`).
 
-The gate leaves a gap. Turns above 20° must use the coarse level, whose minimum is 24.15° CCW and 32.53° CW, so turns between those limits have no executable level. Two of the 8 runs after the gate stopped there, at −21.1° and −26.6°.
+Extrapolated past its calibrated range, the fine level was asked for up to 39.4° at T = 2.05 s (`run_20261024_051956/steps.csv`), with observed overshoot, magnitude not logged (`stop_look.py`, `to_step`). The logs hold 5 such spins. The `fine_max_deg` gate (800661d) now limits the fine level to turns of 20° or less. That gate leaves a range of turns with no executable level, shown as the shaded band in Figure 4 and covered under [Known limitations](#known-limitations).
 
 <p align="center">
   <img src="docs/figures/spin_calibration.png" width="760" alt="Four panels of turn angle against command duration for CCW and CW at command levels 0.35 and 0.25, with fits, smallest steps, and the range with no executable level.">
@@ -135,7 +139,7 @@ The gate leaves a gap. Turns above 20° must use the coarse level, whose minimum
 
 ## Sensor experiments
 
-Earlier experiments measured the on-board IMU and magnetometer, and the navigator takes no input from them. In four slow half turns, the board's fused yaw reported only 18 to 24 % of the rotation, and a self-calibrated magnetometer heading was off by 2.0 to 12.2°. After the motors stopped, the heading needed 1.5 to 3 s to become readable. The data, scripts and notes (in Chinese) are in [`calibration/`](calibration/README.md).
+The navigator takes no IMU input. In earlier experiments with four slow half turns, the board's fused yaw reported only 18 to 24 % of the rotation (`calibration/README.md`, §2). The data, scripts and notes (in Chinese) are in [`calibration/`](calibration/README.md).
 
 ## Tests and simulation
 
@@ -169,12 +173,18 @@ To run on the robot, follow the runbook in [`HW2/hw2_steps.md`](HW2/hw2_steps.md
 
 - **No external ground truth.** No run has a tape-measured `truth.yaml`, so localization error and arrival error are both unknown.
 - **Unexplained range offset.** From the start pose, tag 0 read 1.574 m on one day and 1.613 m on the next, against 1.500 m in the map. Over the first drive, its measured distance fell by 1.095 m on average for 0.893 m commanded (ratio 1.16 to 1.26, 21 runs), yet the hand-measured check gave 0.995 m for a 1.0 m command. The logs cannot separate a range bias, a map error and a drive error. The estimated residuals could carry the same offset without showing it.
-- **Uncorrected turn at WP2.** The 180° goal heading faces no tag, so the last 55° or so of the turn is not corrected. The tests expect this. A fourth tag at (0.5, 2) facing +x would address it (not tested).
+- **Uncorrected turn at WP2.** The 180° goal heading faces no tag, so the last 55° or so of the turn is not corrected. The tests expect this.
 - **3 cm target out of reach for some residuals.** The smallest drive is 5.5 cm. A residual between 3 and 5.5 cm ends the position phase, which is why the best run misses the target. All 132 logged drives used cmd 0.3.
-- **Gap in executable turns.** Turns from 20° to 24.15° CCW and from 20° to 32.53° CW have no level, and the run stops.
+- **Gap in executable turns.** The `fine_max_deg` gate allows the fine level only up to 20°, and the coarse minimum is 24.15° CCW and 32.53° CW. Turns between those limits have no level, and the run stops. Two of the 8 runs after the gate ended this way, at −21.1° and −26.6° (`waypoints.csv`).
 - **`reached` overstates completion.** See [Results](#results). Any move below the smallest step ends the waypoint with `reached = 1`.
 - **Few runs under changing conditions.** Calibration and parameters changed during the 24 runs, and only one run completed after fine calibration. All 24 runs used one floor's calibration.
 - **Lost diagnostics.** Console output was not saved, so 15 incomplete runs have no recorded reason for stopping.
+
+### What would change next
+
+- **External ground truth.** Tape-measured poses in the `truth.yaml` that `plot_run.py` already reads would turn the residuals into localization and arrival errors, and would help separate the causes of the range offset.
+- **Fine drive calibration.** Calibrating cmd 0.2 is the runbook's route to a smallest drive under 3 cm; it was not done.
+- **A fourth tag.** A tag at (0.5, 2) facing +x would give the last turn at WP2 a landmark to correct against (untested).
 
 ## Repository layout
 
@@ -191,13 +201,14 @@ To run on the robot, follow the runbook in [`HW2/hw2_steps.md`](HW2/hw2_steps.md
 
 ## Authors and division of work
 
-The project was developed jointly by two authors. This division follows the commit history:
+The project was developed jointly by two authors. This division follows the commit history, except where noted:
 
 **Shengqi Yuan ([`zzyzhbs`](https://github.com/zzyzhbs))**
 - IMU and magnetometer experiments (`calibration/`)
 - SSH tools and their 29 tests (`tools/`)
 - Fine spin calibration (`study_wood2_hw2_ext.yaml`) and the `fine_max_deg` gate
-- Discussion of the navigation design, parameter tuning and on-robot validation (by the author's account, not visible in commits)
+- On-robot runs and the log archive
+- Navigation design discussion and parameter tuning (by the author's account, not visible in commits)
 - This documentation and the figure script, prepared with AI assistance (Claude)
 
 **[`original-doc`](https://github.com/original-doc)**
@@ -206,7 +217,9 @@ The project was developed jointly by two authors. This division follows the comm
 - ROS nodes (`hw2_nav.py`, `hw2_probe.py`), simulated rover, most of `robot_control/test/`, and the plot tool
 - Camera intrinsic calibration (reprojection RMS 0.30 px) and the runbooks
 
-Run logs were committed from both accounts. The camera and AprilTag nodes and `motor_control.py` come from the course template [7].
+Run logs were committed from both accounts.
+
+**Provided by the course:** the camera and AprilTag nodes and `motor_control.py`, from the course template [7].
 
 ## License
 
