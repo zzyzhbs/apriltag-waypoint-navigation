@@ -28,7 +28,7 @@ The state is $`\mathbf{x} = [x, y, \theta]^\top`$. The filter predicts once per 
 \text{spin } a:\ \ \theta^+ = \theta + a
 ```
 
-Process noise grows with the primitive. For a drive, the along-track standard deviation is $`0.08\,d + 0.01`$ m, the cross-track is $`0.03\,d`$ m and the heading is 2° per metre. For a spin, the heading standard deviation is $`0.05\,|a| + 2^\circ`$.
+Process noise grows with the primitive. For a drive, the along-track standard deviation is $`0.08\,d + 0.01`$ m, the cross-track is $`0.03\,d`$ m and the heading is 2° per metre. For a spin, the heading standard deviation is $`0.05\,|a| + 2°`$.
 
 ### Observation model
 
@@ -38,7 +38,7 @@ An observation is the tag centre and outward normal direction in `base_link`, $`
 h(\mathbf{x}) = \begin{bmatrix} R(\theta)^\top(\mathbf{p}_l - \mathbf{p}) \\ \psi_l - \theta \end{bmatrix}
 ```
 
-Measurement noise depends on the distance $`d`$: $`\sigma_{xy} = 0.005 + 0.01\,d^2`$ m and $`\sigma_\psi = 1.5^\circ + 1.5^\circ\,d`$, doubled above 30° obliquity.
+Measurement noise depends on the distance $`d`$: $`\sigma_{xy} = 0.005 + 0.01\,d^2`$ m and $`\sigma_\psi = 1.5° + 1.5°\,d`$, doubled above 30° obliquity.
 
 ### Gating
 

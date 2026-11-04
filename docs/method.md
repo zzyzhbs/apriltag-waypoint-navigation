@@ -79,7 +79,7 @@ handles each tag as follows:
 | Check | Rule | Logged reason if it fails |
 |---|---|---|
 | Known tag | id is in the map | `not in map` |
-| Geometry, per frame | $`0.25 \le d \le 3`$ m and obliquity $`\le 60^\circ`$ | `out of range` |
+| Geometry, per frame | $`0.25 \le d \le 3`$ m and obliquity $`\le 60°`$ | `out of range` |
 | Frame count | at least 3 usable frames | `only N frames` |
 | Spread | larger of the x and y standard deviations $`\le 2`$ cm | `unstable` |
 
@@ -134,7 +134,7 @@ $`\beta`$:
 
 1. If $`D`$ exceeds 3 cm and a drive of length $`D`$ is executable, align and then drive:
    - Turn first when $`|\beta|`$ exceeds the alignment tolerance
-     $`\min(\max(\operatorname{atan2}(0.03, D),\ 3^\circ),\ 15^\circ)`$ and that turn is executable.
+     $`\min(\max(\mathrm{atan2}(0.03, D),\ 3°),\ 15°)`$ and that turn is executable.
    - Otherwise drive $`D\cos\beta`$. A distance $`L \ge 0.3`$ m is shortened by
      $`\min(0.03L + 0.08,\ L/2)`$ and capped at 1.2 m, because the robot has no reverse primitive and
      an overshoot would mean turning around.
