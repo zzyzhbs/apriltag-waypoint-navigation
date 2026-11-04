@@ -44,9 +44,7 @@ standard form [Thrun et al., ch. 3 and 7].
 **Drive of length $`d`$:**
 
 ```math
-\mathbf{x}^+ = \mathbf{x} + \begin{bmatrix} d\cos\theta \\ d\sin\theta \\ 0 \end{bmatrix},
-\qquad
-F = \begin{bmatrix} 1 & 0 & -d\sin\theta \\ 0 & 1 & d\cos\theta \\ 0 & 0 & 1 \end{bmatrix},
+\mathbf{x}^+ = \mathbf{x} + \begin{bmatrix} d\cos\theta \\ d\sin\theta \\ 0 \end{bmatrix}, \qquad F = \begin{bmatrix} 1 & 0 & -d\sin\theta \\ 0 & 1 & d\cos\theta \\ 0 & 0 & 1 \end{bmatrix},
 ```
 
 ```math
@@ -92,27 +90,13 @@ A tag that passes becomes one observation: the median of $`x_b`$ and $`y_b`$ and
 For a landmark at $`\mathbf{p}_l`$ with normal direction $`\psi_l`$, and $`d_x = x_l - x`$, $`d_y = y_l - y`$:
 
 ```math
-h(\mathbf{x}) =
-\begin{bmatrix}
-\cos\theta\, d_x + \sin\theta\, d_y \\
--\sin\theta\, d_x + \cos\theta\, d_y \\
-\psi_l - \theta
-\end{bmatrix},
-\qquad
-H =
-\begin{bmatrix}
--\cos\theta & -\sin\theta & h_2 \\
-\sin\theta & -\cos\theta & -h_1 \\
-0 & 0 & -1
-\end{bmatrix}.
+h(\mathbf{x}) = \begin{bmatrix} \cos\theta\, d_x + \sin\theta\, d_y \\ -\sin\theta\, d_x + \cos\theta\, d_y \\ \psi_l - \theta \end{bmatrix}, \qquad H = \begin{bmatrix} -\cos\theta & -\sin\theta & h_2 \\ \sin\theta & -\cos\theta & -h_1 \\ 0 & 0 & -1 \end{bmatrix}.
 ```
 
 Measurement noise depends on the distance $`d`$ to the tag:
 
 ```math
-R = \mathrm{diag}(\sigma_{xy}^2,\ \sigma_{xy}^2,\ \sigma_\psi^2),
-\qquad \sigma_{xy} = a + b\,d^2,
-\qquad \sigma_\psi = c + e\,d .
+R = \mathrm{diag}(\sigma_{xy}^2,\ \sigma_{xy}^2,\ \sigma_\psi^2), \qquad \sigma_{xy} = a + b\,d^2, \qquad \sigma_\psi = c + e\,d .
 ```
 
 $`\sigma_\psi`$ is doubled when the obliquity exceeds 30°.
@@ -121,8 +105,7 @@ With innovation $`\boldsymbol{\nu} = \mathbf{z} - h(\mathbf{x})`$ (heading wrapp
 $`S = HPH^\top + R`$, the update is:
 
 ```math
-K = PH^\top S^{-1}, \qquad \mathbf{x}^+ = \mathbf{x} + K\boldsymbol{\nu},
-\qquad P^+ = (I - KH)P(I - KH)^\top + KRK^\top .
+K = PH^\top S^{-1}, \qquad \mathbf{x}^+ = \mathbf{x} + K\boldsymbol{\nu}, \qquad P^+ = (I - KH)P(I - KH)^\top + KRK^\top .
 ```
 
 Tags in one look are applied one at a time, nearest first, each using the state left by the previous
