@@ -245,7 +245,7 @@ def set_style():
 
 
 def headline(fig, title, subtitle, x=0.075, y=0.975):
-    fig.text(x, y, title, fontsize=12.5, fontweight='semibold', color=INK, va='top')
+    fig.text(x, y, title, fontsize=12.5, fontweight='bold', color=INK, va='top')
     fig.text(x, y - 0.045 * 5.0 / fig.get_figheight(), subtitle, fontsize=9.3, color=INK2,
              va='top', linespacing=1.35)
 
@@ -300,7 +300,7 @@ def figure_trajectories(runs, out_dir):
         ax.scatter([gx], [gy], s=95, facecolor='none', edgecolor=INK, linewidth=1.2, zorder=6)
         arrow(ax, gx, gy, gth, 0.2, INK)
         ax.annotate(labels[wp][0], (gx, gy), textcoords='offset points', xytext=labels[wp][1],
-                    color=INK, fontweight='semibold')
+                    color=INK, fontweight='bold')
     for lm in best_run['config']['map']['landmarks']:
         ax.scatter([lm['x']], [lm['y']], s=70, marker='s', color=INK2, zorder=6)
         arrow(ax, lm['x'], lm['y'], lm['yaw_deg'], 0.2, INK2)
