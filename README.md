@@ -20,33 +20,33 @@ Each motion is an open-loop primitive: a fixed wheel command held for a calibrat
 
 ### Motion model
 
-The state is $\mathbf{x} = [x, y, \theta]^\top$. The filter predicts once per primitive [3], using the nominal amount:
+The state is $`\mathbf{x} = [x, y, \theta]^\top`$. The filter predicts once per primitive [3], using the nominal amount:
 
-$$
+```math
 \text{drive } d:\ \ \mathbf{x}^+ = \mathbf{x} + [d\cos\theta,\ d\sin\theta,\ 0]^\top
 \qquad
 \text{spin } a:\ \ \theta^+ = \theta + a
-$$
+```
 
-Process noise grows with the primitive. For a drive, the along-track standard deviation is $0.08\,d + 0.01$ m, the cross-track is $0.03\,d$ m and the heading is 2° per metre. For a spin, the heading standard deviation is $0.05\,|a| + 2°$.
+Process noise grows with the primitive. For a drive, the along-track standard deviation is $`0.08\,d + 0.01`$ m, the cross-track is $`0.03\,d`$ m and the heading is 2° per metre. For a spin, the heading standard deviation is $`0.05\,|a| + 2^\circ`$.
 
 ### Observation model
 
-An observation is the tag centre and outward normal direction in `base_link`, $\mathbf{z} = [x_b, y_b, \psi]^\top$. For a landmark at $\mathbf{p}_l$ with normal direction $\psi_l$:
+An observation is the tag centre and outward normal direction in `base_link`, $`\mathbf{z} = [x_b, y_b, \psi]^\top`$. For a landmark at $`\mathbf{p}_l`$ with normal direction $`\psi_l`$:
 
-$$
+```math
 h(\mathbf{x}) = \begin{bmatrix} R(\theta)^\top(\mathbf{p}_l - \mathbf{p}) \\ \psi_l - \theta \end{bmatrix}
-$$
+```
 
-Measurement noise depends on the distance $d$: $\sigma_{xy} = 0.005 + 0.01\,d^2$ m and $\sigma_\psi = 1.5° + 1.5°\,d$, doubled above 30° obliquity.
+Measurement noise depends on the distance $`d`$: $`\sigma_{xy} = 0.005 + 0.01\,d^2`$ m and $`\sigma_\psi = 1.5^\circ + 1.5^\circ\,d`$, doubled above 30° obliquity.
 
 ### Gating
 
 Observations pass two stages. Within a look, a tag needs at least 3 frames, a position standard deviation of at most 2 cm, a distance of 0.25 to 3 m and an obliquity of at most 60°. The filter then rejects an observation when the squared Mahalanobis distance of its innovation exceeds the chi-square threshold [4, 8]:
 
-$$
+```math
 d^2 = \boldsymbol{\nu}^\top S^{-1} \boldsymbol{\nu} > 11.34 \qquad (3\ \text{degrees of freedom},\ 99\,\%)
-$$
+```
 
 Two looks in a row with every usable tag rejected halt the run, because that points to a wrong map, camera extrinsic or tag frame.
 
