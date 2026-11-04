@@ -81,7 +81,7 @@ These counts do not show that calibration raised the completion rate. The sample
 
 | Run | WP1 | WP2 | WP3 | Note |
 |---|---|---|---|---|
-| `run_20261023_071302` | 3.8 cm, −25.1° | 198.5 cm, −87.3° | 1.9 cm, 0.0°\* | WP2 flagged in error; logic fixed in 9f444fd |
+| `run_20261023_071302` | 3.8 cm, −25.1° | 198.5 cm, −87.3° | 1.9 cm, 0.0°\* | WP2 flagged in error; logic fixed in 8c539dd |
 | `run_20261023_072308` | 1.4 cm, −0.5° | 0.0 cm, +14.2°\* | 0.0 cm, 0.0°\* | WP2 turn below the coarse minimum |
 | `run_20261024_035816` | 2.7 cm, −0.1° | 0.0 cm, 0.0°\* | 0.0 cm, 0.0°\* | |
 | `run_20261024_044445` | 1.2 cm, +1.0° | 0.0 cm, 0.0°\* | 11.7 cm, −131.9° | WP3 turn split to below the coarse minimum (reconstructed) |
@@ -129,7 +129,7 @@ The first navigator runs could not make small heading corrections, because the s
 
 The CW coarse minimum was 24.70° until the CW `time_scale` of 0.77 was added (`study_wood2.yaml`).
 
-Extrapolated past its calibrated range, the fine level was asked for up to 39.4° at T = 2.05 s (`run_20261024_051956/steps.csv`), with observed overshoot, magnitude not logged (`stop_look.py`, `to_step`). The logs hold 5 such spins. The `fine_max_deg` gate (800661d) now limits the fine level to turns of 20° or less. That gate leaves a range of turns with no executable level, shown as the shaded band in Figure 4 and covered under [Known limitations](#known-limitations).
+Extrapolated past its calibrated range, the fine level was asked for up to 39.4° at T = 2.05 s (`run_20261024_051956/steps.csv`), with observed overshoot, magnitude not logged (`stop_look.py`, `to_step`). The logs hold 5 such spins. The `fine_max_deg` gate (fba3757) now limits the fine level to turns of 20° or less. That gate leaves a range of turns with no executable level, shown as the shaded band in Figure 4 and covered under [Known limitations](#known-limitations).
 
 <p align="center">
   <img src="docs/figures/spin_calibration.png" width="760" alt="Four panels of turn angle against command duration for CCW and CW at command levels 0.35 and 0.25, with fits, smallest steps, and the range with no executable level.">
