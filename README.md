@@ -12,7 +12,7 @@ A rover with timed motor commands and no odometry or IMU input drives through th
 
 ## Overview
 
-The route is fixed by the assignment: start at (0, 0, 0°), then visit (1, 0, 0°), (1, 2, 180°) and (0, 0, 0°), in metres and degrees. A Rubik Pi 3 [6] runs ROS 2 Jazzy [5] on a rover base with an OV5647 camera. Three AprilTag 36h11 markers [1, 2], 16.6 cm wide, stand at hand-measured positions (`landmarks.yaml`). The camera and AprilTag nodes are provided by the course [7, 9]. This project adds intrinsic camera calibration, primitive calibration, an SE(2) extended Kalman filter, a waypoint navigator, run logging and a simulated rover. Between tag looks the navigator knows only the nominal length of each motion primitive.
+The route is fixed by the assignment: start at (0, 0, 0°), then visit (1, 0, 0°), (1, 2, 180°) and (0, 0, 0°), in metres and degrees. A Rubik Pi 3 [6] runs ROS 2 Jazzy [5] on a rover base with an OV5647 camera. Three AprilTag 36h11 markers [1, 2], 16.6 cm wide, stand at hand-measured positions (`landmarks.yaml`). The camera and AprilTag nodes are provided by the course [7, 9]. This project adds intrinsic camera calibration, primitive calibration, an SE(2) extended Kalman filter, a waypoint navigator, run logging and a simulated rover. Between tag looks the navigator knows only the nominal length of each motion primitive. A [demo video](https://www.youtube.com/shorts/DX3TtBoyumA) is on YouTube.
 
 ## Method
 
@@ -149,18 +149,14 @@ The navigator takes no IMU input. In earlier experiments with four slow half tur
 
 ## Reproduce
 
-These commands run the tests and rebuild the figures and `numbers.md`. They need no robot and no ROS:
+These commands run the tests and rebuild the figures and `numbers.md`. They need no robot and no ROS. `pytest.ini` selects both test folders and skips the 3 ament lint tests.
 
 ```bash
 pip install numpy pyyaml matplotlib pytest
 ```
 
 ```bash
-PYTHONPATH=robot_control python -m pytest robot_control/test --ignore=robot_control/test/test_copyright.py --ignore=robot_control/test/test_flake8.py --ignore=robot_control/test/test_pep257.py
-```
-
-```bash
-python -m pytest tools
+python -m pytest
 ```
 
 ```bash
@@ -172,7 +168,7 @@ To run on the robot, follow the runbook in [`HW2/hw2_steps.md`](HW2/hw2_steps.md
 ## Known limitations
 
 - **No external ground truth.** No run has a tape-measured `truth.yaml`, so localization error and arrival error are both unknown.
-- **Unexplained range offset.** From the start pose, tag 0 read 1.574 m on one day and 1.613 m on the next, against 1.500 m in the map. Over the first drive, its measured distance fell by 1.095 m on average for 0.893 m commanded (ratio 1.16 to 1.26, 21 runs), yet the hand-measured check gave 0.995 m for a 1.0 m command. The logs cannot separate a range bias, a map error and a drive error. The estimated residuals could carry the same offset without showing it.
+- **Unexplained range offset.** Tag 0 reads 7 to 12 cm farther than the map from the start pose (n = 23), and the cause is not identified. The mean was 1.574 m on one day and 1.613 m on the next, against 1.500 m in the map. Over the first drive, its measured distance fell by 1.095 m on average for 0.893 m commanded (ratio 1.16 to 1.26, 21 runs), yet the hand-measured check gave 0.995 m for a 1.0 m command. The logs cannot separate a range bias, a map error and a drive error. The estimated residuals could carry the same offset without showing it.
 - **Uncorrected turn at WP2.** The 180° goal heading faces no tag, so the last 55° or so of the turn is not corrected. The tests expect this.
 - **3 cm target out of reach for some residuals.** The smallest drive is 5.5 cm. A residual between 3 and 5.5 cm ends the position phase, which is why the best run misses the target. All 132 logged drives used cmd 0.3.
 - **Gap in executable turns.** The `fine_max_deg` gate allows the fine level only up to 20°, and the coarse minimum is 24.15° CCW and 32.53° CW. Turns between those limits have no level, and the run stops. Two of the 8 runs after the gate ended this way, at −21.1° and −26.6° (`waypoints.csv`).
@@ -208,8 +204,8 @@ The project was developed jointly by two authors. This division follows the comm
 - SSH tools and their 29 tests (`tools/`)
 - Fine spin calibration (`study_wood2_hw2_ext.yaml`) and the `fine_max_deg` gate
 - On-robot runs and the log archive
-- Navigation design discussion and parameter tuning (by the author's account, not visible in commits)
-- This documentation and the figure script, prepared with AI assistance (Claude)
+- Navigation design discussion and parameter tuning (not reflected in commits)
+- Documentation and figure script (written with AI assistance)
 
 **[`original-doc`](https://github.com/original-doc)**
 - Open-loop framework and its calibration tool (`ol_*.py`)
@@ -239,4 +235,4 @@ Project code is under the [MIT License](LICENSE). `apriltag_ros/` and `robot_vis
 
 ## 中文摘要
 
-UCSD CSE 276A 的双人课程项目：小车运行 ROS 2 Jazzy，停车观测 AprilTag，修正 SE(2) 扩展卡尔曼滤波的位姿估计，依次到达三个航点。24 次实车运行中 7 次标记全部到达，最佳运行估计残差为 3.1、3.3、5.1 cm，未达 3 cm 目标。所有位姿都是滤波估计，没有外部真值。细级标定把最小转角降到 3.05° 和 4.55°，也留下一段无可用档位的转角。
+UCSD CSE 276A 双人项目：小车在 ROS 2 Jazzy 上停车观测 AprilTag，修正 SE(2) EKF 位姿估计，到达三个航点。24 次实车运行中 7 次标记全部到达，其中 4 次仍有航点残差远超容差；最佳运行估计残差 3.1、3.3、5.1 cm，未达 3 cm 目标。位姿均为滤波估计，无外部真值。细级标定把最小转角降到 3.05° 和 4.55°，但留下一段无档位转角。
